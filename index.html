@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wavelength</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* ============ SCREENS ============ */
+        .screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0; left: 0;
+        }
+        .screen.active { display: flex; }
+
+        /* ============ MENU SCREEN ============ */
+        #menuScreen {
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .menu-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            margin: auto 0;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        .menu-title {
+            font-size: clamp(2.2rem, 8vw, 4.5rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #00d9ff, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+
+        .menu-subtitle {
+            font-size: clamp(0.95rem, 2.5vw, 1.3rem);
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: -12px;
+        }
+
+        .teams-setup {
+            display: flex;
+            gap: 24px;
+            width: 100%;
+            max-width: 700px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .team-setup-col {
+            flex: 1;
+            min-width: 240px;
+            max-width: 320px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.08);
+        }
+        .team-setup-col.team1 { border-color: rgba(0, 217, 255, 0.25); }
+        .team-setup-col.team2 { border-color: rgba(255, 107, 107, 0.25); }
+
+        .team-header-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: inherit;
+            text-align: center;
+            outline: none;
+            margin-bottom: 12px;
+        }
+        .team-setup-col.team1 .team-header-input { color: #00d9ff; }
+        .team-setup-col.team2 .team-header-input { color: #ff6b6b; }
+
+        .player-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        .player-row { display: flex; gap: 6px; align-items: center; }
+        .player-row input {
+            flex: 1; padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff; font-size: 0.95rem; font-family: inherit; outline: none;
+        }
+        .player-row input:focus { border-color: rgba(255, 255, 255, 0.35); }
+
+        .btn-remove-player {
+            width: 28px; height: 28px; border: none; border-radius: 50%;
+            background: rgba(255, 80, 80, 0.25); color: #ff6b6b;
+            font-size: 1.1rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s; flex-shrink: 0;
+        }
+        .btn-remove-player:hover { background: rgba(255, 80, 80, 0.5); }
+
+        .btn-add-player {
+            width: 100%; padding: 7px;
+            border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 8px;
+            background: transparent; color: rgba(255, 255, 255, 0.45);
+            font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-add-player:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .score-setting {
+            display: flex; align-items: center; justify-content: center;
+            gap: 12px; color: rgba(255, 255, 255, 0.7); font-size: 1rem;
+        }
+        .score-setting select {
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.15); border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08); color: #fff;
+            font-size: 1rem; font-family: inherit; outline: none; cursor: pointer;
+        }
+        .score-setting select option { background: #1a1a2e; color: #fff; }
+
+        .menu-error { color: #ff6b6b; font-size: 0.9rem; min-height: 1.2em; }
+
+        /* ============ BUTTONS ============ */
+        .btn {
+            padding: 12px 32px; border: none; border-radius: 30px;
+            cursor: pointer; font-weight: 700;
+            font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+            font-family: inherit; transition: all 0.3s; letter-spacing: 0.5px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
+        .btn:active { transform: translateY(0); }
+        .btn-primary { background: linear-gradient(145deg, #00d9ff, #0099cc); color: #000; }
+
+        /* ============ GAME SCREEN ============ */
+        #gameScreen { flex-direction: column; position: relative; }
+
+        #scoreboard {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 16px; background: rgba(0, 0, 0, 0.4);
+            z-index: 10; flex-shrink: 0;
+        }
+        .team-score {
+            font-size: clamp(0.8rem, 2vw, 1.05rem); font-weight: 700;
+            padding: 5px 14px; border-radius: 20px;
+        }
+        .team-score.team1 { background: rgba(0, 217, 255, 0.2); color: #00d9ff; border: 1px solid rgba(0, 217, 255, 0.3); }
+        .team-score.team2 { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); }
+        .round-info {
+            font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+            color: rgba(255, 255, 255, 0.5); text-align: center; line-height: 1.3;
+        }
+        .hinter-info { font-weight: 700; font-size: clamp(0.8rem, 2vw, 0.95rem); }
+
+        /* Persistent clue bar */
+        #clueBar {
+            display: none;
+            background: rgba(0, 0, 0, 0.45);
+            text-align: center;
+            padding: 6px 16px;
+            flex-shrink: 0;
+        }
+        #clueBar .clue-text {
+            font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        /* Top panel for phase controls */
+        #gameTopPanel {
+            flex-shrink: 0;
+            text-align: center;
+        }
+        .phase-panel {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+        }
+        .phase-panel h3 {
+            font-size: clamp(1rem, 2.8vw, 1.4rem);
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.85);
+        }
+        .phase-panel p {
+            font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+            color: rgba(255, 255, 255, 0.55);
+            line-height: 1.4;
+        }
+        .phase-panel .highlight { color: #00d9ff; }
+
+        .peek-instruction {
+            color: rgba(255, 255, 200, 0.9) !important;
+            background: rgba(255, 200, 0, 0.15);
+            padding: 6px 18px; border-radius: 10px;
+            border: 1px solid rgba(255, 200, 0, 0.3);
+            font-weight: 600;
+        }
+
+        .spectrum-reminder {
+            font-size: clamp(1rem, 2.8vw, 1.3rem);
+            font-weight: 700; padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.15);
+            letter-spacing: 1px;
+        }
+        .spectrum-reminder .arrow { color: rgba(255, 255, 255, 0.4); margin: 0 8px; }
+
+        #clueInput {
+            padding: 10px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 12px;
+            background: rgba(255, 255, 255, 0.08); color: #fff;
+            font-size: clamp(1rem, 2.8vw, 1.3rem);
+            font-family: inherit; font-weight: 600;
+            text-align: center; outline: none;
+            width: 100%; max-width: 320px;
+            transition: border-color 0.3s;
+        }
+        #clueInput:focus { border-color: #00d9ff; }
+
+        /* Canvas container */
+        #dialContainer {
+            position: relative; flex: 1;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        #dialCanvas { display: block; }
+
+        .spectrum-label {
+            position: absolute;
+            font-size: clamp(0.85rem, 2.5vw, 1.3rem); font-weight: 700;
+            padding: 8px 18px; border-radius: 10px;
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 5; max-width: 35%; text-align: center; word-wrap: break-word;
+        }
+        #spectrumLeft { left: 3%; bottom: 12%; }
+        #spectrumRight { right: 3%; bottom: 12%; }
+
+        /* ============ SOLID OVERLAY (prep screen only) ============ */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 20; padding: 20px; text-align: center; gap: 14px;
+            opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
+        }
+        .overlay.active { opacity: 1; pointer-events: auto; }
+        .overlay-solid { background: rgba(10, 10, 30, 0.92); }
+        .overlay h2 { font-size: clamp(1.5rem, 5vw, 2.6rem); font-weight: 800; }
+        .overlay h3 { font-size: clamp(1.1rem, 3vw, 1.6rem); font-weight: 700; color: rgba(255,255,255,0.8); }
+        .overlay p {
+            font-size: clamp(0.9rem, 2.5vw, 1.15rem);
+            color: rgba(255,255,255,0.65); max-width: 500px; line-height: 1.5;
+        }
+
+        /* Reveal scoring */
+        .reveal-score-card {
+            background: rgba(0, 0, 0, 0.65); border-radius: 14px;
+            padding: 14px 28px; border: 1px solid rgba(255,255,255,0.15);
+            min-width: 260px; display: inline-block;
+        }
+        .score-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 0; font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+        }
+        .score-row .points { font-weight: 800; font-size: clamp(1.1rem, 3vw, 1.4rem); }
+        .score-row .points.gold { color: #ffd700; }
+        .score-row .points.green { color: #4ade80; }
+        .score-row .points.red { color: #ff6b6b; }
+        .score-divider { height: 1px; background: rgba(255,255,255,0.15); margin: 4px 0; }
+        .score-label {
+            font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+            padding: 3px 12px; border-radius: 6px; font-weight: 700;
+        }
+        .score-label.bullseye { background: rgba(60, 120, 255, 0.2); color: #5b9bff; }
+        .score-label.close { background: rgba(255, 70, 70, 0.2); color: #ff6b6b; }
+        .score-label.near { background: rgba(255, 200, 0, 0.2); color: #ffc800; }
+        .score-label.miss { background: rgba(255, 255, 255, 0.08); color: rgba(255,255,255,0.5); }
+
+        /* ============ GAME OVER SCREEN ============ */
+        #gameOverScreen {
+            flex-direction: column; justify-content: center; align-items: center;
+            gap: 24px; padding: 20px;
+        }
+        .winner-title { font-size: clamp(2rem, 7vw, 4rem); font-weight: 800; }
+        .final-scores { display: flex; gap: 30px; margin: 10px 0; }
+        .final-score-card {
+            background: rgba(255,255,255,0.06); border-radius: 16px;
+            padding: 20px 30px; text-align: center;
+            border: 2px solid rgba(255,255,255,0.1); min-width: 140px;
+        }
+        .final-score-card .team-name { font-size: 1rem; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
+        .final-score-card .score-value { font-size: 2.5rem; font-weight: 800; }
+        .final-score-card.winner { border-color: #ffd700; background: rgba(255, 215, 0, 0.08); }
+
+        /* ============ SPECTRUM CARD LISTS ============ */
+        .card-manager {
+            width: 100%;
+            max-width: 700px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 16px;
+            border: 2px solid rgba(255,255,255,0.08);
+            overflow: hidden;
+        }
+        .card-manager-title {
+            padding: 12px 18px 8px;
+            font-size: 1rem; font-weight: 700;
+            color: rgba(255,255,255,0.7);
+        }
+        /* Individual list row */
+        .card-list-row {
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .card-list-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .card-list-header:hover { background: rgba(255,255,255,0.04); }
+        .card-list-header input[type="checkbox"] {
+            width: 18px; height: 18px;
+            accent-color: #00d9ff;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .card-list-header .list-name {
+            font-size: 0.95rem; font-weight: 600;
+            color: rgba(255,255,255,0.8);
+            flex: 1;
+        }
+        .card-list-header .list-name.builtin { color: rgba(255,255,255,0.65); }
+        .card-list-header .list-count {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.35);
+        }
+        .card-list-header .list-expand {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.35);
+            transition: transform 0.3s;
+        }
+        .card-list-header .list-expand.open { transform: rotate(180deg); }
+        .btn-delete-list {
+            width: 22px; height: 22px; border: none; border-radius: 50%;
+            background: rgba(255, 80, 80, 0.2); color: #ff6b6b;
+            font-size: 0.85rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s; flex-shrink: 0; padding: 0;
+        }
+        .btn-delete-list:hover { background: rgba(255, 80, 80, 0.45); }
+        /* Expanded card area */
+        .card-list-cards {
+            display: none;
+            padding: 0 18px 12px 46px;
+        }
+        .card-list-cards.open { display: block; }
+        .card-add-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .card-add-row input {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-size: 0.85rem;
+            font-family: inherit;
+            outline: none;
+        }
+        .card-add-row input:focus { border-color: rgba(255,255,255,0.35); }
+        .card-add-row .arrow-label {
+            color: rgba(255,255,255,0.3);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        .btn-add-card {
+            padding: 7px 14px;
+            border: none; border-radius: 8px;
+            background: rgba(0, 217, 255, 0.2);
+            color: #00d9ff;
+            font-size: 0.8rem; font-weight: 700;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.2s; flex-shrink: 0;
+        }
+        .btn-add-card:hover { background: rgba(0, 217, 255, 0.35); }
+        .card-chips {
+            max-height: 160px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .card-chips::-webkit-scrollbar { width: 5px; }
+        .card-chips::-webkit-scrollbar-track { background: transparent; }
+        .card-chips::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+        .card-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.65);
+            white-space: nowrap;
+        }
+        .card-chip .chip-arrow { color: rgba(255,255,255,0.3); }
+        .card-chip .chip-remove {
+            width: 15px; height: 15px;
+            border: none; border-radius: 50%;
+            background: rgba(255, 80, 80, 0.2);
+            color: #ff6b6b;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s; flex-shrink: 0;
+            padding: 0; line-height: 1;
+        }
+        .card-chip .chip-remove:hover { background: rgba(255, 80, 80, 0.5); }
+        /* New list button */
+        .btn-new-list {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            background: transparent;
+            color: rgba(0, 217, 255, 0.7);
+            font-size: 0.9rem; font-weight: 600;
+            font-family: inherit; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-new-list:hover { background: rgba(0, 217, 255, 0.08); }
+        .new-list-input-row {
+            display: flex; gap: 6px;
+            padding: 8px 18px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .new-list-input-row input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+            color: #fff; font-size: 0.9rem;
+            font-family: inherit; outline: none;
+        }
+        .new-list-input-row input:focus { border-color: #00d9ff; }
+    </style>
+</head>
+<body>
+
+    <!-- ============ MENU SCREEN ============ -->
+    <div id="menuScreen" class="screen active">
+      <div class="menu-inner">
+        <div class="menu-title">WAVELENGTH</div>
+        <div class="menu-subtitle">Get on the same wavelength</div>
+        <div class="teams-setup">
+            <div class="team-setup-col team1">
+                <input type="text" class="team-header-input" id="team1NameInput" value="Team 1" maxlength="20" />
+                <div class="player-list" id="team1Players">
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
+                </div>
+                <button class="btn-add-player" onclick="addPlayer('team1Players')">+ Add Player</button>
+            </div>
+            <div class="team-setup-col team2">
+                <input type="text" class="team-header-input" id="team2NameInput" value="Team 2" maxlength="20" />
+                <div class="player-list" id="team2Players">
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
+                </div>
+                <button class="btn-add-player" onclick="addPlayer('team2Players')">+ Add Player</button>
+            </div>
+        </div>
+        <div class="score-setting">
+            <span>Play to</span>
+            <select id="targetScoreSelect">
+                <option value="8">8 points</option>
+                <option value="10" selected>10 points</option>
+                <option value="15">15 points</option>
+                <option value="20">20 points</option>
+            </select>
+        </div>
+        <!-- Spectrum Card Lists -->
+        <div class="card-manager" id="cardManager">
+            <div class="card-manager-title">Spectrum Card Lists</div>
+            <div id="cardListsContainer"></div>
+            <button class="btn-new-list" onclick="showNewListInput()">+ New List</button>
+        </div>
+
+        <div class="menu-error" id="menuError"></div>
+        <button class="btn btn-primary" onclick="startGame()">Start Game</button>
+      </div>
+    </div>
+
+    <!-- ============ GAME SCREEN ============ -->
+    <div id="gameScreen" class="screen">
+        <div id="scoreboard">
+            <div class="team-score team1" id="team1ScoreDisplay">Team 1: 0</div>
+            <div class="round-info" id="roundInfo">
+                <div>Round 1</div>
+                <div class="hinter-info" id="hinterInfo"></div>
+            </div>
+            <div class="team-score team2" id="team2ScoreDisplay">Team 2: 0</div>
+        </div>
+
+        <!-- Persistent clue bar (shown from guess phase through reveal) -->
+        <div id="clueBar">
+            <span class="clue-text">Clue: "<span id="clueBarText"></span>"</span>
+        </div>
+
+        <!-- Top panel: phase-specific controls above the dial -->
+        <div id="gameTopPanel">
+            <!-- Clue entry panel -->
+            <div id="clueEntryPanel" class="phase-panel">
+                <h3 id="clueEntryTitle">Enter Your Clue</h3>
+                <div class="spectrum-reminder" id="spectrumReminder"></div>
+                <input type="text" id="clueInput" placeholder="Your clue..." maxlength="40" autocomplete="off" />
+                <button class="btn btn-primary" id="submitClueBtn">Submit Clue</button>
+            </div>
+            <!-- Guess panel -->
+            <div id="guessPanel" class="phase-panel">
+                <p id="guessInstruction">Drag the pointer to guess</p>
+                <button class="btn btn-primary" id="lockGuessBtn">Lock In Guess</button>
+            </div>
+            <!-- Counter guess panel -->
+            <div id="counterPanel" class="phase-panel">
+                <h3 id="counterTitle">Click the side you think the target center is on</h3>
+                <button class="btn btn-primary" id="counterSubmitBtn" style="display:none;">Submit</button>
+            </div>
+            <!-- Reveal panel -->
+            <div id="revealPanel" class="phase-panel">
+                <div class="reveal-score-card" id="revealScoreCard"></div>
+                <button class="btn btn-primary" id="nextRoundBtn">Next Turn</button>
+            </div>
+        </div>
+
+        <!-- Dial area -->
+        <div id="dialContainer">
+            <canvas id="dialCanvas"></canvas>
+            <div class="spectrum-label" id="spectrumLeft"></div>
+            <div class="spectrum-label" id="spectrumRight"></div>
+        </div>
+
+        <!-- SOLID OVERLAY: Psychic Prep (hides everything) -->
+        <div id="psychicPrepOverlay" class="overlay overlay-solid">
+            <h2 id="psychicPrepTitle">Team 1's Turn</h2>
+            <h3 id="psychicPrepHinter"></h3>
+            <p id="psychicPrepDesc"></p>
+            <button class="btn btn-primary" id="psychicReadyBtn">Show Me the Target</button>
+        </div>
+    </div>
+
+    <!-- ============ GAME OVER SCREEN ============ -->
+    <div id="gameOverScreen" class="screen">
+        <div class="winner-title" id="winnerTitle">Team 1 Wins!</div>
+        <div class="final-scores" id="finalScores"></div>
+        <button class="btn btn-primary" onclick="goToMenu()">Play Again</button>
+    </div>
+
+<script>
+// ================================================================
+// SPECTRUM CARD LISTS
+// ================================================================
+const CARD_LISTS = [
+    {
+        name: 'Basic',
+        builtin: true,
+        cards: [
+            { left: 'Hot', right: 'Cold' },
+            { left: 'Soft', right: 'Hard' },
+            { left: 'Light', right: 'Heavy' },
+            { left: 'Fast', right: 'Slow' },
+            { left: 'Loud', right: 'Quiet' },
+            { left: 'Smooth', right: 'Rough' },
+            { left: 'Wet', right: 'Dry' },
+            { left: 'Big', right: 'Small' },
+            { left: 'Round', right: 'Pointy' },
+            { left: 'Bright', right: 'Dim' },
+            { left: 'Sweet', right: 'Sour' },
+            { left: 'Spicy', right: 'Mild' },
+            { left: 'Healthy', right: 'Unhealthy' },
+            { left: 'Gourmet', right: 'Fast Food' },
+            { left: 'Undercooked', right: 'Overcooked' },
+            { left: 'Tasty', right: 'Disgusting' },
+            { left: 'Happy', right: 'Sad' },
+            { left: 'Brave', right: 'Cowardly' },
+            { left: 'Calm', right: 'Anxious' },
+            { left: 'Optimistic', right: 'Pessimistic' },
+            { left: 'Introverted', right: 'Extroverted' },
+            { left: 'Serious', right: 'Silly' },
+            { left: 'Romantic', right: 'Unromantic' },
+            { left: 'Generous', right: 'Stingy' },
+            { left: 'Patient', right: 'Impatient' },
+            { left: 'Honest', right: 'Deceptive' },
+            { left: 'Overrated', right: 'Underrated' },
+            { left: 'Mainstream', right: 'Niche' },
+            { left: 'Old-Fashioned', right: 'Modern' },
+            { left: 'Formal', right: 'Casual' },
+            { left: 'Urban', right: 'Rural' },
+            { left: 'Luxury', right: 'Budget' },
+            { left: 'Famous', right: 'Unknown' },
+            { left: 'Classy', right: 'Tacky' },
+            { left: 'Trendy', right: 'Timeless' },
+            { left: 'Good', right: 'Evil' },
+            { left: 'Legal', right: 'Illegal' },
+            { left: 'Ethical', right: 'Unethical' },
+            { left: 'Selfish', right: 'Selfless' },
+            { left: 'Forgivable', right: 'Unforgivable' },
+            { left: 'Role Model', right: 'Bad Influence' },
+            { left: 'Beautiful', right: 'Ugly' },
+            { left: 'Colorful', right: 'Dull' },
+            { left: 'Simple', right: 'Complex' },
+            { left: 'Futuristic', right: 'Retro' },
+            { left: 'Elegant', right: 'Messy' },
+            { left: 'Safe', right: 'Dangerous' },
+            { left: 'Easy', right: 'Difficult' },
+            { left: 'Boring', right: 'Exciting' },
+            { left: 'Relaxing', right: 'Stressful' },
+            { left: 'Rewarding', right: 'Pointless' },
+            { left: 'Ancient', right: 'Recent' },
+            { left: 'Rare', right: 'Common' },
+            { left: 'Natural', right: 'Artificial' },
+            { left: 'Permanent', right: 'Temporary' },
+            { left: 'Predictable', right: 'Surprising' },
+            { left: 'Weird', right: 'Normal' },
+            { left: 'Smells Good', right: 'Smells Bad' },
+            { left: 'Useful', right: 'Useless' },
+            { left: 'Cheap', right: 'Expensive' },
+            { left: 'Necessary', right: 'Unnecessary' },
+            { left: 'Trustworthy', right: 'Suspicious' },
+            { left: 'Cute', right: 'Scary' },
+            { left: 'Addictive', right: 'Forgettable' },
+            { left: 'Genius', right: 'Foolish' },
+            { left: 'Guilty Pleasure', right: 'Openly Love' },
+            { left: 'Skill', right: 'Luck' },
+            { left: 'Needs Salt', right: 'Too Salty' },
+            { left: 'Looks Easy', right: 'Looks Hard' },
+            { left: 'Overpriced', right: 'A Bargain' },
+            { left: 'Best Alone', right: 'Best With Others' },
+        ]
+    }
+];
+
+// Which lists are selected for the game + which are expanded in menu
+let selectedListIndices = new Set([0]);
+let expandedListIndices = new Set();
+
+// Active card pool — built from selected lists at game start
+let SPECTRUM_CARDS = [];
+
+// ================================================================
+// GAME STATE
+// ================================================================
+const GamePhase = {
+    MENU: 'MENU',
+    PSYCHIC_PREP: 'PSYCHIC_PREP',
+    CLUE_ENTRY: 'CLUE_ENTRY',
+    GUESS_PHASE: 'GUESS_PHASE',
+    COUNTER_GUESS: 'COUNTER_GUESS',
+    REVEAL: 'REVEAL',
+    GAME_OVER: 'GAME_OVER'
+};
+
+const gameState = {
+    phase: GamePhase.MENU,
+    targetScore: 10,
+    teams: [
+        { name: 'Team 1', score: 0, color: '#00d9ff', players: [], hinterIndex: 0 },
+        { name: 'Team 2', score: 0, color: '#ff6b6b', players: [], hinterIndex: 0 }
+    ],
+    activeTeamIndex: 0,
+    roundNumber: 1,
+    round: {
+        spectrumCard: null,
+        targetAngle: 90,
+        hinterName: '',
+        clue: '',
+        guessAngle: 90,
+        counterGuess: null,
+        pointsAwarded: null,
+        revealed: false
+    },
+    usedCardIndices: [],
+    roundHistory: []
+};
+
+// ================================================================
+// DIAL GEOMETRY & INTERACTION STATE
+// ================================================================
+const dialGeo = { cx: 0, cy: 0, radius: 0 };
+let isDragging = false;
+
+// 20 sections on the dial, each 9°. Target = 5 sections wide.
+// Each scoring tier is 1 section wide (9°) from the center outward.
+const SECTION_DEG = 9;
+const ZONE_BULLSEYE = SECTION_DEG * 0.5;  // ±4.5° = 1 section centered
+const ZONE_CLOSE = SECTION_DEG * 1.5;     // ±13.5° = extends 1 more section each side
+const ZONE_NEAR = SECTION_DEG * 2.5;      // ±22.5° = extends 1 more section each side
+
+let revealAnim = { active: false, startTime: 0, duration: 1200 };
+let scorePopups = [];
+
+// Counter guess interaction state
+let counterHoverSide = null;    // null | 'LEFT' | 'RIGHT'
+let counterSelectedSide = null; // null | 'LEFT' | 'RIGHT'
+
+// ================================================================
+// MENU: PLAYER MANAGEMENT
+// ================================================================
+function addPlayer(listId) {
+    const list = document.getElementById(listId);
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = '<input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button>';
+    list.appendChild(row);
+    row.querySelector('input').focus();
+}
+
+function removePlayer(btn) {
+    const row = btn.parentElement;
+    const list = row.parentElement;
+    if (list.querySelectorAll('.player-row').length <= 2) return;
+    row.remove();
+}
+
+function getPlayersFromList(listId) {
+    const inputs = document.getElementById(listId).querySelectorAll('.player-row input');
+    const names = [];
+    inputs.forEach((input, i) => {
+        names.push(input.value.trim() || `Player ${i + 1}`);
+    });
+    return names;
+}
+
+// ================================================================
+// MENU: SPECTRUM CARD LIST MANAGER
+// ================================================================
+function renderCardManager() {
+    const container = document.getElementById('cardListsContainer');
+    let html = '';
+    CARD_LISTS.forEach((list, li) => {
+        const checked = selectedListIndices.has(li) ? 'checked' : '';
+        const expanded = expandedListIndices.has(li);
+        html += `<div class="card-list-row">`;
+        html += `<div class="card-list-header" onclick="toggleListExpand(${li})">`;
+        html += `<input type="checkbox" ${checked} onclick="event.stopPropagation(); toggleListSelection(${li})" />`;
+        html += `<span class="list-name${list.builtin ? ' builtin' : ''}">${list.name}</span>`;
+        html += `<span class="list-count">(${list.cards.length})</span>`;
+        html += `<span class="list-expand${expanded ? ' open' : ''}">&#9660;</span>`;
+        if (!list.builtin) {
+            html += `<button class="btn-delete-list" onclick="event.stopPropagation(); deleteList(${li})" title="Delete list">&times;</button>`;
+        }
+        html += `</div>`;
+        html += `<div class="card-list-cards${expanded ? ' open' : ''}">`;
+        if (!list.builtin) {
+            html += `<div class="card-add-row">`;
+            html += `<input type="text" id="addLeft_${li}" placeholder="Left (e.g. Hot)" maxlength="30" onkeydown="if(event.key==='Enter')addCardToList(${li})" />`;
+            html += `<span class="arrow-label">&harr;</span>`;
+            html += `<input type="text" id="addRight_${li}" placeholder="Right (e.g. Cold)" maxlength="30" onkeydown="if(event.key==='Enter')addCardToList(${li})" />`;
+            html += `<button class="btn-add-card" onclick="addCardToList(${li})">+ Add</button>`;
+            html += `</div>`;
+        }
+        html += `<div class="card-chips">`;
+        list.cards.forEach((card, ci) => {
+            html += `<div class="card-chip">`;
+            html += `${card.left} <span class="chip-arrow">&harr;</span> ${card.right}`;
+            if (!list.builtin) {
+                html += `<button class="chip-remove" onclick="removeCardFromList(${li},${ci})" title="Remove">&times;</button>`;
+            }
+            html += `</div>`;
+        });
+        html += `</div></div></div>`;
+    });
+    container.innerHTML = html;
+}
+
+function toggleListSelection(li) {
+    if (selectedListIndices.has(li)) {
+        selectedListIndices.delete(li);
+    } else {
+        selectedListIndices.add(li);
+    }
+    renderCardManager();
+}
+
+function toggleListExpand(li) {
+    if (expandedListIndices.has(li)) {
+        expandedListIndices.delete(li);
+    } else {
+        expandedListIndices.add(li);
+    }
+    renderCardManager();
+}
+
+function showNewListInput() {
+    const name = prompt('New list name:');
+    if (!name || !name.trim()) return;
+    CARD_LISTS.push({ name: name.trim(), builtin: false, cards: [] });
+    const newIndex = CARD_LISTS.length - 1;
+    selectedListIndices.add(newIndex);
+    expandedListIndices.add(newIndex);
+    renderCardManager();
+}
+
+function deleteList(li) {
+    if (CARD_LISTS[li].builtin) return;
+    CARD_LISTS.splice(li, 1);
+    // Rebuild index sets since indices shifted
+    const rebuildSet = (s) => {
+        const n = new Set();
+        s.forEach(i => { if (i < li) n.add(i); else if (i > li) n.add(i - 1); });
+        return n;
+    };
+    selectedListIndices = rebuildSet(selectedListIndices);
+    expandedListIndices = rebuildSet(expandedListIndices);
+    renderCardManager();
+}
+
+function addCardToList(li) {
+    const leftInput = document.getElementById(`addLeft_${li}`);
+    const rightInput = document.getElementById(`addRight_${li}`);
+    const left = leftInput.value.trim();
+    const right = rightInput.value.trim();
+    if (!left || !right) return;
+    CARD_LISTS[li].cards.push({ left, right });
+    renderCardManager();
+    // Re-focus the left input after re-render
+    setTimeout(() => {
+        const el = document.getElementById(`addLeft_${li}`);
+        if (el) el.focus();
+    }, 0);
+}
+
+function removeCardFromList(li, ci) {
+    CARD_LISTS[li].cards.splice(ci, 1);
+    renderCardManager();
+}
+
+// ================================================================
+// CANVAS RENDERING
+// ================================================================
+function gameAngleToCanvas(gameDeg) {
+    return Math.PI * (1 + gameDeg / 180);
+}
+
+function getAngleFromMouse(mx, my) {
+    const dx = mx - dialGeo.cx;
+    const dy = dialGeo.cy - my;
+    let angle = Math.atan2(dy, dx);
+    if (angle < 0) angle = dx < 0 ? Math.PI : 0;
+    angle = Math.max(0, Math.min(Math.PI, angle));
+    return 180 - (angle * 180 / Math.PI);
+}
+
+function drawDialBackground(ctx, cx, cy, r) {
+    ctx.fillStyle = '#f0f0f0';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, gameAngleToCanvas(0), gameAngleToCanvas(180), false);
+    ctx.closePath();
+    ctx.fill();
+
+    // 19 tick marks creating 20 sections (every 9°)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 20; i++) {
+        const deg = i * 9;
+        const rad = gameAngleToCanvas(deg);
+        const inner = r * 0.90;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(rad) * inner, cy + Math.sin(rad) * inner);
+        ctx.lineTo(cx + Math.cos(rad) * r, cy + Math.sin(rad) * r);
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.07, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, gameAngleToCanvas(0), gameAngleToCanvas(180), false);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - r, cy);
+    ctx.lineTo(cx + r, cy);
+    ctx.stroke();
+}
+
+function drawTargetZone(ctx, cx, cy, r, targetAngle, alpha) {
+    if (alpha <= 0) return;
+
+    const zones = [
+        { halfWidth: ZONE_NEAR,     fillColor: `rgba(255, 200, 0, ${0.55 * alpha})`,   borderColor: `rgba(200, 160, 0, ${0.6 * alpha})`,   pts: 2 },
+        { halfWidth: ZONE_CLOSE,    fillColor: `rgba(220, 50, 50, ${0.6 * alpha})`,     borderColor: `rgba(180, 30, 30, ${0.7 * alpha})`,    pts: 3 },
+        { halfWidth: ZONE_BULLSEYE, fillColor: `rgba(50, 100, 240, ${0.7 * alpha})`,    borderColor: `rgba(30, 70, 200, ${0.8 * alpha})`,    pts: 4 },
+    ];
+
+    zones.forEach(zone => {
+        const startDeg = Math.max(0, targetAngle - zone.halfWidth);
+        const endDeg = Math.min(180, targetAngle + zone.halfWidth);
+        ctx.fillStyle = zone.fillColor;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, gameAngleToCanvas(startDeg), gameAngleToCanvas(endDeg), false);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = zone.borderColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, gameAngleToCanvas(startDeg), gameAngleToCanvas(endDeg), false);
+        ctx.stroke();
+    });
+
+    if (alpha > 0.4) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const labelR = r * 0.55;
+
+        const label2Offset = (ZONE_NEAR + ZONE_CLOSE) / 2;
+        [targetAngle - label2Offset, targetAngle + label2Offset].forEach(deg => {
+            const clamped = Math.max(2, Math.min(178, deg));
+            const rad = gameAngleToCanvas(clamped);
+            ctx.font = `bold ${Math.round(r * 0.09)}px 'Segoe UI'`;
+            ctx.fillStyle = `rgba(120, 90, 0, ${0.9 * alpha})`;
+            ctx.fillText('2', cx + Math.cos(rad) * labelR, cy + Math.sin(rad) * labelR);
+        });
+
+        const label3Offset = (ZONE_CLOSE + ZONE_BULLSEYE) / 2;
+        [targetAngle - label3Offset, targetAngle + label3Offset].forEach(deg => {
+            const clamped = Math.max(2, Math.min(178, deg));
+            const rad = gameAngleToCanvas(clamped);
+            ctx.font = `bold ${Math.round(r * 0.09)}px 'Segoe UI'`;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * alpha})`;
+            ctx.fillText('3', cx + Math.cos(rad) * labelR, cy + Math.sin(rad) * labelR);
+        });
+
+        const centerRad = gameAngleToCanvas(Math.max(2, Math.min(178, targetAngle)));
+        ctx.font = `bold ${Math.round(r * 0.11)}px 'Segoe UI'`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * alpha})`;
+        ctx.fillText('4', cx + Math.cos(centerRad) * labelR, cy + Math.sin(centerRad) * labelR);
+    }
+
+    if (alpha > 0.5) {
+        const centerRad = gameAngleToCanvas(targetAngle);
+        ctx.strokeStyle = `rgba(30, 70, 200, ${0.8 * alpha})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(centerRad) * r, cy + Math.sin(centerRad) * r);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+}
+
+function drawPointer(ctx, cx, cy, r, angle) {
+    const rad = gameAngleToCanvas(angle);
+    const tipX = cx + Math.cos(rad) * r;
+    const tipY = cy + Math.sin(rad) * r;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawCounterHighlight(ctx, cx, cy, r, guessAngle, side, isSelected, isHover) {
+    let startDeg, endDeg;
+    if (side === 'LEFT') {
+        startDeg = 0;
+        endDeg = guessAngle;
+    } else {
+        startDeg = guessAngle;
+        endDeg = 180;
+    }
+    if (endDeg - startDeg < 1) return;
+
+    // Fill highlight
+    if (isSelected) {
+        ctx.fillStyle = 'rgba(255, 190, 30, 0.4)';
+    } else if (isHover) {
+        ctx.fillStyle = 'rgba(180, 200, 255, 0.3)';
+    }
+    if (isSelected || isHover) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, gameAngleToCanvas(startDeg), gameAngleToCanvas(endDeg), false);
+        ctx.closePath();
+        ctx.fill();
+
+        // Border on the highlighted area
+        ctx.strokeStyle = isSelected ? 'rgba(255, 190, 30, 0.7)' : 'rgba(180, 200, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 1, gameAngleToCanvas(startDeg), gameAngleToCanvas(endDeg), false);
+        ctx.stroke();
+    }
+}
+
+function drawCounterLabels(ctx, cx, cy, r, guessAngle, selectedSide, hoverSide) {
+    ['LEFT', 'RIGHT'].forEach(side => {
+        const startDeg = side === 'LEFT' ? 0 : guessAngle;
+        const endDeg = side === 'LEFT' ? guessAngle : 180;
+        if (endDeg - startDeg < 3) return;
+
+        const midDeg = (startDeg + endDeg) / 2;
+        const labelRad = gameAngleToCanvas(Math.max(8, Math.min(172, midDeg)));
+        const labelR = r * 0.5;
+        const lx = cx + Math.cos(labelRad) * labelR;
+        const ly = cy + Math.sin(labelRad) * labelR;
+
+        const isActive = side === selectedSide;
+        const isHover = !selectedSide && side === hoverSide;
+        const fontSize = Math.round(r * 0.1);
+
+        // Text with outline for readability
+        ctx.font = `bold ${fontSize}px 'Segoe UI'`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Outline
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.strokeText(side, lx, ly);
+
+        // Fill
+        if (isActive) {
+            ctx.fillStyle = '#fff';
+        } else if (isHover) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        } else {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        }
+        ctx.fillText(side, lx, ly);
+    });
+}
+
+function drawRevealCover(ctx, cx, cy, r, progress) {
+    if (progress >= 1) return;
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const revealStart = gameState.round.targetAngle - eased * 180;
+    const revealEnd = gameState.round.targetAngle + eased * 180;
+    const clampedStart = Math.max(0, revealStart);
+    const clampedEnd = Math.min(180, revealEnd);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r + 5, gameAngleToCanvas(0), gameAngleToCanvas(180), false);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(26, 26, 46, ${0.95 * (1 - eased * 0.3)})`;
+    ctx.fill();
+
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r + 10, gameAngleToCanvas(clampedStart), gameAngleToCanvas(clampedEnd), false);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawScorePopups(ctx) {
+    const now = performance.now();
+    scorePopups = scorePopups.filter(pop => {
+        const elapsed = now - pop.startTime;
+        if (elapsed < 0) return true;
+        if (elapsed > pop.duration) return false;
+        const progress = elapsed / pop.duration;
+        ctx.save();
+        ctx.globalAlpha = 1 - progress;
+        ctx.font = `bold ${Math.round(22 * (1 + progress * 0.3))}px 'Segoe UI'`;
+        ctx.fillStyle = pop.color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pop.text, pop.x, pop.y - progress * 50);
+        ctx.restore();
+        return true;
+    });
+}
+
+function renderDial() {
+    const canvas = document.getElementById('dialCanvas');
+    const ctx = canvas.getContext('2d');
+    const { cx, cy, radius } = dialGeo;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (radius <= 0) return;
+
+    drawDialBackground(ctx, cx, cy, radius);
+
+    // Target zone: visible during PEEK, CLUE_ENTRY, and REVEAL
+    const showTarget = [GamePhase.CLUE_ENTRY, GamePhase.REVEAL].includes(gameState.phase);
+    if (showTarget) {
+        let alpha = 1;
+        if (revealAnim.active) {
+            const elapsed = performance.now() - revealAnim.startTime;
+            alpha = Math.min(1, elapsed / revealAnim.duration);
+            if (alpha >= 1) revealAnim.active = false;
+        }
+        drawTargetZone(ctx, cx, cy, radius, gameState.round.targetAngle, alpha);
+    }
+
+    if (revealAnim.active && gameState.phase === GamePhase.REVEAL) {
+        const progress = Math.min(1, (performance.now() - revealAnim.startTime) / revealAnim.duration);
+        drawRevealCover(ctx, cx, cy, radius, progress);
+    }
+
+    // Counter guess highlights (before pointer so pointer draws on top)
+    if (gameState.phase === GamePhase.COUNTER_GUESS) {
+        const gA = gameState.round.guessAngle;
+        // Draw highlights
+        if (counterSelectedSide) {
+            drawCounterHighlight(ctx, cx, cy, radius, gA, counterSelectedSide, true, false);
+        } else if (counterHoverSide) {
+            drawCounterHighlight(ctx, cx, cy, radius, gA, counterHoverSide, false, true);
+        }
+        // Always draw both labels on top
+        drawCounterLabels(ctx, cx, cy, radius, gA, counterSelectedSide, counterHoverSide);
+    }
+
+    // Pointer
+    const showPointer = [GamePhase.GUESS_PHASE, GamePhase.COUNTER_GUESS, GamePhase.REVEAL].includes(gameState.phase);
+    if (showPointer) {
+        drawPointer(ctx, cx, cy, radius, gameState.round.guessAngle);
+    }
+
+    drawScorePopups(ctx);
+
+    if (revealAnim.active || scorePopups.length > 0) {
+        requestAnimationFrame(renderDial);
+    }
+}
+
+// ================================================================
+// CANVAS SIZING
+// ================================================================
+function resizeCanvas() {
+    const canvas = document.getElementById('dialCanvas');
+    const container = document.getElementById('dialContainer');
+    if (!container) return;
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.getContext('2d').scale(dpr, dpr);
+
+    const padTop = 10;
+    const padBottom = 18;
+    // Flat edge of semicircle sits at cy, arc rises to cy - radius
+    // Place flat edge near bottom with padding, cap radius so arc fits
+    dialGeo.cy = h - padBottom;
+    const maxRadiusByHeight = dialGeo.cy - padTop;        // arc top stays inside
+    const maxRadiusByWidth = (w - 20) / 2;                // sides stay inside
+    dialGeo.radius = Math.min(maxRadiusByHeight, maxRadiusByWidth);
+    dialGeo.cx = w / 2;
+    renderDial();
+}
+
+// ================================================================
+// EVENT HANDLING
+// ================================================================
+function getCanvasPos(e) {
+    const canvas = document.getElementById('dialCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function isInDial(px, py) {
+    const { cx, cy, radius } = dialGeo;
+    const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+    return dist <= radius + 15 && py <= cy + 15;
+}
+
+function getSideOfPointer(px, py) {
+    const angle = getAngleFromMouse(px, py);
+    return angle < gameState.round.guessAngle ? 'LEFT' : 'RIGHT';
+}
+
+function handlePointerDown(e) {
+    const pos = getCanvasPos(e);
+
+    if (gameState.phase === GamePhase.GUESS_PHASE) {
+        e.preventDefault();
+        if (isInDial(pos.x, pos.y)) {
+            isDragging = true;
+            gameState.round.guessAngle = getAngleFromMouse(pos.x, pos.y);
+            renderDial();
+        }
+    } else if (gameState.phase === GamePhase.COUNTER_GUESS) {
+        e.preventDefault();
+        if (isInDial(pos.x, pos.y)) {
+            counterSelectedSide = getSideOfPointer(pos.x, pos.y);
+            counterHoverSide = null;
+            document.getElementById('counterSubmitBtn').style.display = 'inline-block';
+            renderDial();
+        }
+    }
+}
+
+function handlePointerMove(e) {
+    const pos = getCanvasPos(e);
+    const canvas = document.getElementById('dialCanvas');
+
+    if (gameState.phase === GamePhase.GUESS_PHASE) {
+        if (isDragging) {
+            e.preventDefault();
+            gameState.round.guessAngle = getAngleFromMouse(pos.x, pos.y);
+            renderDial();
+        }
+        canvas.style.cursor = isInDial(pos.x, pos.y) ? 'grab' : 'default';
+    } else if (gameState.phase === GamePhase.COUNTER_GUESS) {
+        if (isInDial(pos.x, pos.y)) {
+            const newSide = getSideOfPointer(pos.x, pos.y);
+            if (!counterSelectedSide && newSide !== counterHoverSide) {
+                counterHoverSide = newSide;
+                renderDial();
+            }
+            canvas.style.cursor = 'pointer';
+        } else {
+            if (counterHoverSide !== null) {
+                counterHoverSide = null;
+                renderDial();
+            }
+            canvas.style.cursor = 'default';
+        }
+    } else {
+        canvas.style.cursor = 'default';
+    }
+}
+
+function handlePointerUp() {
+    isDragging = false;
+}
+
+function setupEventListeners() {
+    const canvas = document.getElementById('dialCanvas');
+    canvas.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+    window.addEventListener('touchmove', (e) => {
+        if (isDragging && gameState.phase === GamePhase.GUESS_PHASE) {
+            e.preventDefault();
+            const pos = getCanvasPos(e);
+            gameState.round.guessAngle = getAngleFromMouse(pos.x, pos.y);
+            renderDial();
+        }
+    }, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
+    window.addEventListener('resize', resizeCanvas);
+
+    document.getElementById('psychicReadyBtn').addEventListener('click', () => setPhase(GamePhase.CLUE_ENTRY));
+    document.getElementById('submitClueBtn').addEventListener('click', submitClue);
+    document.getElementById('lockGuessBtn').addEventListener('click', () => setPhase(GamePhase.COUNTER_GUESS));
+    document.getElementById('counterSubmitBtn').addEventListener('click', () => {
+        if (counterSelectedSide) {
+            gameState.round.counterGuess = counterSelectedSide;
+            setPhase(GamePhase.REVEAL);
+        }
+    });
+    document.getElementById('nextRoundBtn').addEventListener('click', nextRound);
+    document.getElementById('clueInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitClue();
+    });
+}
+
+// ================================================================
+// CARD & SCORING LOGIC
+// ================================================================
+function drawCard() {
+    const available = SPECTRUM_CARDS.map((_, i) => i).filter(i => !gameState.usedCardIndices.includes(i));
+    if (available.length === 0) { gameState.usedCardIndices = []; return drawCard(); }
+    const idx = available[Math.floor(Math.random() * available.length)];
+    gameState.usedCardIndices.push(idx);
+    return SPECTRUM_CARDS[idx];
+}
+
+function generateTargetAngle() {
+    // Snap to section centers (multiples of 9°, offset by 4.5°)
+    // so the target zones align cleanly with the grid.
+    // Need ±22.5° to fit, so center must be in [22.5, 157.5].
+    // Section centers: 4.5, 13.5, 22.5, ..., 175.5
+    // Valid: 22.5 to 157.5 → indices 2 to 17 (of 0-19)
+    const idx = Math.floor(Math.random() * 16) + 2; // 2..17
+    return idx * 9 + 4.5;
+}
+
+function calculateScore(targetAngle, guessAngle) {
+    const diff = Math.abs(targetAngle - guessAngle);
+    if (diff <= ZONE_BULLSEYE) return 4;
+    if (diff <= ZONE_CLOSE) return 3;
+    if (diff <= ZONE_NEAR) return 2;
+    return 0;
+}
+
+function getScoreLabel(points) {
+    if (points === 4) return { text: 'Bullseye! (4 pts)', cls: 'bullseye' };
+    if (points === 3) return { text: 'Close! (3 pts)', cls: 'close' };
+    if (points === 2) return { text: 'Near (2 pts)', cls: 'near' };
+    return { text: 'Miss (0 pts)', cls: 'miss' };
+}
+
+function resolveRound() {
+    const { targetAngle, guessAngle, counterGuess } = gameState.round;
+    const activeTeamPoints = calculateScore(targetAngle, guessAngle);
+    const opposingTeamIndex = 1 - gameState.activeTeamIndex;
+    let counterCorrect = false;
+    if (counterGuess && activeTeamPoints < 4) {
+        const targetIsRight = targetAngle > guessAngle;
+        counterCorrect = (counterGuess === 'RIGHT' && targetIsRight) || (counterGuess === 'LEFT' && !targetIsRight);
+    }
+    gameState.round.pointsAwarded = { activeTeam: activeTeamPoints, opposingTeam: counterCorrect ? 1 : 0 };
+    gameState.teams[gameState.activeTeamIndex].score += activeTeamPoints;
+    gameState.teams[opposingTeamIndex].score += (counterCorrect ? 1 : 0);
+    gameState.roundHistory.push({ ...gameState.round });
+    return gameState.round.pointsAwarded;
+}
+
+function getCurrentHinter() {
+    const team = gameState.teams[gameState.activeTeamIndex];
+    return team.players[team.hinterIndex];
+}
+
+function advanceHinter(teamIndex) {
+    const team = gameState.teams[teamIndex];
+    team.hinterIndex = (team.hinterIndex + 1) % team.players.length;
+}
+
+// ================================================================
+// PHASE MANAGEMENT
+// ================================================================
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+}
+
+function showPanel(panelId) {
+    document.querySelectorAll('.phase-panel').forEach(p => p.style.display = 'none');
+    if (panelId) document.getElementById(panelId).style.display = 'flex';
+}
+
+function showClueBar(show) {
+    document.getElementById('clueBar').style.display = show ? 'block' : 'none';
+}
+
+function hidePrepOverlay() {
+    document.getElementById('psychicPrepOverlay').classList.remove('active');
+}
+
+function updateScoreboard() {
+    const t1 = gameState.teams[0];
+    const t2 = gameState.teams[1];
+    document.getElementById('team1ScoreDisplay').textContent = `${t1.name}: ${t1.score}`;
+    document.getElementById('team2ScoreDisplay').textContent = `${t2.name}: ${t2.score}`;
+    const hinter = getCurrentHinter();
+    const team = gameState.teams[gameState.activeTeamIndex];
+    document.getElementById('roundInfo').innerHTML =
+        `<div>Round ${gameState.roundNumber}</div><div class="hinter-info" style="color:${team.color}">${hinter} is hinting</div>`;
+}
+
+function updateSpectrumLabels() {
+    const card = gameState.round.spectrumCard;
+    if (!card) return;
+    document.getElementById('spectrumLeft').textContent = card.left;
+    document.getElementById('spectrumRight').textContent = card.right;
+}
+
+function setPhase(newPhase) {
+    gameState.phase = newPhase;
+
+    switch (newPhase) {
+        case GamePhase.MENU:
+            showScreen('menuScreen');
+            return;
+
+        case GamePhase.PSYCHIC_PREP: {
+            showScreen('gameScreen');
+            updateScoreboard();
+            updateSpectrumLabels();
+            showClueBar(false);
+            showPanel(null);
+            const team = gameState.teams[gameState.activeTeamIndex];
+            const hinter = getCurrentHinter();
+            document.getElementById('psychicPrepTitle').textContent = `${team.name}'s Turn`;
+            document.getElementById('psychicPrepTitle').style.color = team.color;
+            document.getElementById('psychicPrepHinter').innerHTML = `<span style="color:${team.color}">${hinter}</span> is the Hinter`;
+            document.getElementById('psychicPrepDesc').innerHTML = `<strong>${hinter}</strong> will see the target.<br>Everyone else, <strong>look away!</strong>`;
+            document.getElementById('psychicPrepOverlay').classList.add('active');
+            renderDial();
+            break;
+        }
+
+        case GamePhase.CLUE_ENTRY: {
+            hidePrepOverlay();
+            gameState.round.revealed = true;
+            const card = gameState.round.spectrumCard;
+            const hinter = getCurrentHinter();
+            document.getElementById('clueEntryTitle').textContent = `${hinter}, Enter Your Clue`;
+            document.getElementById('spectrumReminder').innerHTML = `${card.left} <span class="arrow">&larr;&rarr;</span> ${card.right}`;
+            document.getElementById('clueInput').value = '';
+            showClueBar(false);
+            showPanel('clueEntryPanel');
+            setTimeout(() => document.getElementById('clueInput').focus(), 100);
+            renderDial();
+            break;
+        }
+
+        case GamePhase.GUESS_PHASE: {
+            gameState.round.revealed = false; // hide target for guessers
+            gameState.round.guessAngle = 90;
+            const team = gameState.teams[gameState.activeTeamIndex];
+            const hinter = getCurrentHinter();
+            const teammates = team.players.filter(p => p !== hinter);
+            document.getElementById('guessInstruction').innerHTML =
+                `<strong style="color:${team.color}">${teammates.join(', ')}</strong> — drag the pointer to guess`;
+            document.getElementById('clueBarText').textContent = gameState.round.clue;
+            showClueBar(true);
+            showPanel('guessPanel');
+            renderDial();
+            break;
+        }
+
+        case GamePhase.COUNTER_GUESS: {
+            const opposingTeam = gameState.teams[1 - gameState.activeTeamIndex];
+            document.getElementById('counterTitle').innerHTML =
+                `<span style="color:${opposingTeam.color}">${opposingTeam.name}</span> — click the side you think the target center is on`;
+            counterHoverSide = null;
+            counterSelectedSide = null;
+            document.getElementById('counterSubmitBtn').style.display = 'none';
+            showClueBar(true);
+            showPanel('counterPanel');
+            renderDial();
+            break;
+        }
+
+        case GamePhase.REVEAL: {
+            const points = resolveRound();
+            gameState.round.revealed = true;
+            revealAnim.active = true;
+            revealAnim.startTime = performance.now();
+            requestAnimationFrame(renderDial);
+
+            const activeTeam = gameState.teams[gameState.activeTeamIndex];
+            const opposingTeam = gameState.teams[1 - gameState.activeTeamIndex];
+            const label = getScoreLabel(points.activeTeam);
+
+            let html = `<div class="score-label ${label.cls}">${label.text}</div>`;
+            html += `<div class="score-divider"></div>`;
+            html += `<div class="score-row"><span style="color:${activeTeam.color}">${activeTeam.name}</span><span class="points ${points.activeTeam > 0 ? 'gold' : 'red'}">+${points.activeTeam}</span></div>`;
+            html += `<div class="score-row"><span style="color:${opposingTeam.color}">${opposingTeam.name}</span><span class="points ${points.opposingTeam > 0 ? 'green' : 'red'}">+${points.opposingTeam}</span></div>`;
+            document.getElementById('revealScoreCard').innerHTML = html;
+            updateScoreboard();
+
+            const targetRad = gameAngleToCanvas(gameState.round.targetAngle);
+            const popX = dialGeo.cx + Math.cos(targetRad) * dialGeo.radius * 0.6;
+            const popY = dialGeo.cy + Math.sin(targetRad) * dialGeo.radius * 0.6;
+            if (points.activeTeam > 0) {
+                scorePopups.push({ text: `+${points.activeTeam}`, x: popX, y: popY, color: '#ffd700', startTime: performance.now() + 800, duration: 1500 });
+            }
+
+            showClueBar(true);
+            // Small delay so reveal animation plays before showing score
+            showPanel(null);
+            setTimeout(() => showPanel('revealPanel'), 900);
+            break;
+        }
+
+        case GamePhase.GAME_OVER: {
+            showScreen('gameOverScreen');
+            const winner = gameState.teams[0].score >= gameState.targetScore ? gameState.teams[0] : gameState.teams[1];
+            document.getElementById('winnerTitle').textContent = `${winner.name} Wins!`;
+            document.getElementById('winnerTitle').style.color = winner.color;
+            let html = '';
+            gameState.teams.forEach(team => {
+                const isWinner = team.score >= gameState.targetScore;
+                html += `<div class="final-score-card ${isWinner ? 'winner' : ''}"><div class="team-name" style="color:${team.color}">${team.name}</div><div class="score-value" style="color:${team.color}">${team.score}</div></div>`;
+            });
+            document.getElementById('finalScores').innerHTML = html;
+            break;
+        }
+    }
+}
+
+// ================================================================
+// GAME ACTIONS
+// ================================================================
+function startGame() {
+    const name1 = document.getElementById('team1NameInput').value.trim() || 'Team 1';
+    const name2 = document.getElementById('team2NameInput').value.trim() || 'Team 2';
+    const players1 = getPlayersFromList('team1Players');
+    const players2 = getPlayersFromList('team2Players');
+    if (players1.length < 2) { document.getElementById('menuError').textContent = `${name1} needs at least 2 players`; return; }
+    if (players2.length < 2) { document.getElementById('menuError').textContent = `${name2} needs at least 2 players`; return; }
+
+    // Build card pool from selected lists
+    SPECTRUM_CARDS = [];
+    selectedListIndices.forEach(i => SPECTRUM_CARDS.push(...CARD_LISTS[i].cards));
+    if (SPECTRUM_CARDS.length < 3) {
+        document.getElementById('menuError').textContent = 'Select card lists with at least 3 cards total';
+        return;
+    }
+    document.getElementById('menuError').textContent = '';
+
+    gameState.teams[0] = { name: name1, score: 0, color: '#00d9ff', players: players1, hinterIndex: Math.floor(Math.random() * players1.length) };
+    gameState.teams[1] = { name: name2, score: 0, color: '#ff6b6b', players: players2, hinterIndex: Math.floor(Math.random() * players2.length) };
+    gameState.activeTeamIndex = Math.random() < 0.5 ? 0 : 1;
+    // Second team gets 1 bonus point for going second
+    gameState.teams[1 - gameState.activeTeamIndex].score = 1;
+    gameState.roundNumber = 1;
+    gameState.usedCardIndices = [];
+    gameState.roundHistory = [];
+    gameState.targetScore = parseInt(document.getElementById('targetScoreSelect').value);
+
+    gameState.round = { spectrumCard: drawCard(), targetAngle: generateTargetAngle(), hinterName: getCurrentHinter(), clue: '', guessAngle: 90, counterGuess: null, pointsAwarded: null, revealed: false };
+    setPhase(GamePhase.PSYCHIC_PREP);
+    resizeCanvas();
+}
+
+function submitClue() {
+    const clue = document.getElementById('clueInput').value.trim();
+    if (!clue) return;
+    gameState.round.clue = clue;
+    setPhase(GamePhase.GUESS_PHASE);
+}
+
+function nextRound() {
+    if (gameState.teams.find(t => t.score >= gameState.targetScore)) { setPhase(GamePhase.GAME_OVER); return; }
+    advanceHinter(gameState.activeTeamIndex);
+    gameState.activeTeamIndex = 1 - gameState.activeTeamIndex;
+    gameState.roundNumber++;
+    gameState.round = { spectrumCard: drawCard(), targetAngle: generateTargetAngle(), hinterName: getCurrentHinter(), clue: '', guessAngle: 90, counterGuess: null, pointsAwarded: null, revealed: false };
+    revealAnim.active = false;
+    scorePopups = [];
+    setPhase(GamePhase.PSYCHIC_PREP);
+}
+
+function goToMenu() {
+    gameState.phase = GamePhase.MENU;
+    showScreen('menuScreen');
+}
+
+// ================================================================
+// INITIALIZATION
+// ================================================================
+function init() {
+    setupEventListeners();
+    resizeCanvas();
+    renderCardManager();
+    showScreen('menuScreen');
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
