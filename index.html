@@ -1132,7 +1132,10 @@ function drawScorePopups(ctx) {
         ctx.fillStyle = pop.color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(pop.text, pop.x, pop.y - progress * 50);
+        // Position from the current dial geometry, which can change if the canvas resizes mid-popup
+        const x = dialGeo.cx + Math.cos(pop.angle) * dialGeo.radius * 0.6;
+        const y = dialGeo.cy + Math.sin(pop.angle) * dialGeo.radius * 0.6;
+        ctx.fillText(pop.text, x, y - progress * 50);
         ctx.restore();
         return true;
     });
@@ -1312,6 +1315,8 @@ function setupEventListeners() {
     }, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
     window.addEventListener('resize', resizeCanvas);
+    // Panels above the dial (clue entry, guess, reveal) change the container's height without a window resize
+    if (window.ResizeObserver) new ResizeObserver(() => resizeCanvas()).observe(document.getElementById('dialContainer'));
 
     document.getElementById('psychicReadyBtn').addEventListener('click', () => setPhase(GamePhase.CLUE_ENTRY));
     document.getElementById('submitClueBtn').addEventListener('click', submitClue);
@@ -1516,10 +1521,8 @@ function setPhase(newPhase) {
             updateScoreboard();
 
             const targetRad = gameAngleToCanvas(gameState.round.targetAngle);
-            const popX = dialGeo.cx + Math.cos(targetRad) * dialGeo.radius * 0.6;
-            const popY = dialGeo.cy + Math.sin(targetRad) * dialGeo.radius * 0.6;
             if (points.activeTeam > 0) {
-                scorePopups.push({ text: `+${points.activeTeam}`, x: popX, y: popY, color: '#ffd700', startTime: performance.now() + 800, duration: 1500 });
+                scorePopups.push({ text: `+${points.activeTeam}`, angle: targetRad, color: '#ffd700', startTime: performance.now() + 800, duration: 1500 });
             }
 
             showClueBar(true);
