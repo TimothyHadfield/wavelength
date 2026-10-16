@@ -757,6 +757,11 @@ function removePlayer(btn) {
     row.remove();
 }
 
+// Names, list names and card text are typed by players; escape them before putting them in innerHTML
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function getPlayersFromList(listId) {
     const inputs = document.getElementById(listId).querySelectorAll('.player-row input');
     const names = [];
@@ -778,7 +783,7 @@ function renderCardManager() {
         html += `<div class="card-list-row">`;
         html += `<div class="card-list-header" onclick="toggleListExpand(${li})">`;
         html += `<input type="checkbox" ${checked} onclick="event.stopPropagation(); toggleListSelection(${li})" />`;
-        html += `<span class="list-name${list.builtin ? ' builtin' : ''}">${list.name}</span>`;
+        html += `<span class="list-name${list.builtin ? ' builtin' : ''}">${escapeHtml(list.name)}</span>`;
         html += `<span class="list-count">(${list.cards.length})</span>`;
         html += `<span class="list-expand${expanded ? ' open' : ''}">&#9660;</span>`;
         if (!list.builtin) {
@@ -797,7 +802,7 @@ function renderCardManager() {
         html += `<div class="card-chips">`;
         list.cards.forEach((card, ci) => {
             html += `<div class="card-chip">`;
-            html += `${card.left} <span class="chip-arrow">&harr;</span> ${card.right}`;
+            html += `${escapeHtml(card.left)} <span class="chip-arrow">&harr;</span> ${escapeHtml(card.right)}`;
             if (!list.builtin) {
                 html += `<button class="chip-remove" onclick="removeCardFromList(${li},${ci})" title="Remove">&times;</button>`;
             }
@@ -1424,7 +1429,7 @@ function updateScoreboard() {
     const hinter = getCurrentHinter();
     const team = gameState.teams[gameState.activeTeamIndex];
     document.getElementById('roundInfo').innerHTML =
-        `<div>Round ${gameState.roundNumber}</div><div class="hinter-info" style="color:${team.color}">${hinter} is hinting</div>`;
+        `<div>Round ${gameState.roundNumber}</div><div class="hinter-info" style="color:${team.color}">${escapeHtml(hinter)} is hinting</div>`;
 }
 
 function updateSpectrumLabels() {
@@ -1452,8 +1457,8 @@ function setPhase(newPhase) {
             const hinter = getCurrentHinter();
             document.getElementById('psychicPrepTitle').textContent = `${team.name}'s Turn`;
             document.getElementById('psychicPrepTitle').style.color = team.color;
-            document.getElementById('psychicPrepHinter').innerHTML = `<span style="color:${team.color}">${hinter}</span> is the Hinter`;
-            document.getElementById('psychicPrepDesc').innerHTML = `<strong>${hinter}</strong> will see the target.<br>Everyone else, <strong>look away!</strong>`;
+            document.getElementById('psychicPrepHinter').innerHTML = `<span style="color:${team.color}">${escapeHtml(hinter)}</span> is the Hinter`;
+            document.getElementById('psychicPrepDesc').innerHTML = `<strong>${escapeHtml(hinter)}</strong> will see the target.<br>Everyone else, <strong>look away!</strong>`;
             document.getElementById('psychicPrepOverlay').classList.add('active');
             renderDial();
             break;
@@ -1465,7 +1470,7 @@ function setPhase(newPhase) {
             const card = gameState.round.spectrumCard;
             const hinter = getCurrentHinter();
             document.getElementById('clueEntryTitle').textContent = `${hinter}, Enter Your Clue`;
-            document.getElementById('spectrumReminder').innerHTML = `${card.left} <span class="arrow">&larr;&rarr;</span> ${card.right}`;
+            document.getElementById('spectrumReminder').innerHTML = `${escapeHtml(card.left)} <span class="arrow">&larr;&rarr;</span> ${escapeHtml(card.right)}`;
             document.getElementById('clueInput').value = '';
             showClueBar(false);
             showPanel('clueEntryPanel');
@@ -1479,9 +1484,10 @@ function setPhase(newPhase) {
             gameState.round.guessAngle = 90;
             const team = gameState.teams[gameState.activeTeamIndex];
             const hinter = getCurrentHinter();
-            const teammates = team.players.filter(p => p !== hinter);
+            // Filter by position, not name, so a teammate who shares the hinter's name is still listed
+            const teammates = team.players.filter((p, i) => i !== team.hinterIndex);
             document.getElementById('guessInstruction').innerHTML =
-                `<strong style="color:${team.color}">${teammates.join(', ')}</strong> — drag the pointer to guess`;
+                `<strong style="color:${team.color}">${escapeHtml(teammates.join(', '))}</strong> — drag the pointer to guess`;
             document.getElementById('clueBarText').textContent = gameState.round.clue;
             showClueBar(true);
             showPanel('guessPanel');
@@ -1492,7 +1498,7 @@ function setPhase(newPhase) {
         case GamePhase.COUNTER_GUESS: {
             const opposingTeam = gameState.teams[1 - gameState.activeTeamIndex];
             document.getElementById('counterTitle').innerHTML =
-                `<span style="color:${opposingTeam.color}">${opposingTeam.name}</span> — click the side you think the target center is on`;
+                `<span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span> — click the side you think the target center is on`;
             counterHoverSide = null;
             counterSelectedSide = null;
             document.getElementById('counterSubmitBtn').style.display = 'none';
@@ -1515,8 +1521,8 @@ function setPhase(newPhase) {
 
             let html = `<div class="score-label ${label.cls}">${label.text}</div>`;
             html += `<div class="score-divider"></div>`;
-            html += `<div class="score-row"><span style="color:${activeTeam.color}">${activeTeam.name}</span><span class="points ${points.activeTeam > 0 ? 'gold' : 'red'}">+${points.activeTeam}</span></div>`;
-            html += `<div class="score-row"><span style="color:${opposingTeam.color}">${opposingTeam.name}</span><span class="points ${points.opposingTeam > 0 ? 'green' : 'red'}">+${points.opposingTeam}</span></div>`;
+            html += `<div class="score-row"><span style="color:${activeTeam.color}">${escapeHtml(activeTeam.name)}</span><span class="points ${points.activeTeam > 0 ? 'gold' : 'red'}">+${points.activeTeam}</span></div>`;
+            html += `<div class="score-row"><span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span><span class="points ${points.opposingTeam > 0 ? 'green' : 'red'}">+${points.opposingTeam}</span></div>`;
             document.getElementById('revealScoreCard').innerHTML = html;
             updateScoreboard();
 
@@ -1534,13 +1540,15 @@ function setPhase(newPhase) {
 
         case GamePhase.GAME_OVER: {
             showScreen('gameOverScreen');
-            const winner = gameState.teams[0].score >= gameState.targetScore ? gameState.teams[0] : gameState.teams[1];
+            // Both teams can pass the target in one round (guess points + counter point): the higher score wins
+            const [t1, t2] = gameState.teams;
+            const winner = t2.score > t1.score ? t2 : t1;
             document.getElementById('winnerTitle').textContent = `${winner.name} Wins!`;
             document.getElementById('winnerTitle').style.color = winner.color;
             let html = '';
             gameState.teams.forEach(team => {
-                const isWinner = team.score >= gameState.targetScore;
-                html += `<div class="final-score-card ${isWinner ? 'winner' : ''}"><div class="team-name" style="color:${team.color}">${team.name}</div><div class="score-value" style="color:${team.color}">${team.score}</div></div>`;
+                const isWinner = team === winner;
+                html += `<div class="final-score-card ${isWinner ? 'winner' : ''}"><div class="team-name" style="color:${team.color}">${escapeHtml(team.name)}</div><div class="score-value" style="color:${team.color}">${team.score}</div></div>`;
             });
             document.getElementById('finalScores').innerHTML = html;
             break;
