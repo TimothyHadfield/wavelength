@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Wavelength</title>
+    <meta name="description" content="The party game Wavelength for two teams sharing one phone or laptop: give a clue, turn the dial, score points.">
+    <link rel="icon" href="data:,">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -25,6 +27,8 @@
             position: absolute;
             top: 0; left: 0;
         }
+        /* iPhone Safari: 100vh includes the area under the bottom toolbar; dvh is the visible height */
+        @supports (height: 100dvh) { .screen { height: 100dvh; } }
         .screen.active { display: flex; }
 
         /* ============ MENU SCREEN ============ */
@@ -489,25 +493,25 @@
         <div class="menu-subtitle">Get on the same wavelength</div>
         <div class="teams-setup">
             <div class="team-setup-col team1">
-                <input type="text" class="team-header-input" id="team1NameInput" value="Team 1" maxlength="20" />
+                <input type="text" class="team-header-input" id="team1NameInput" value="Team 1" maxlength="20" aria-label="Team 1 name" />
                 <div class="player-list" id="team1Players">
-                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
-                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" aria-label="Remove player" onclick="removePlayer(this)">&times;</button></div>
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" aria-label="Remove player" onclick="removePlayer(this)">&times;</button></div>
                 </div>
                 <button class="btn-add-player" onclick="addPlayer('team1Players')">+ Add Player</button>
             </div>
             <div class="team-setup-col team2">
-                <input type="text" class="team-header-input" id="team2NameInput" value="Team 2" maxlength="20" />
+                <input type="text" class="team-header-input" id="team2NameInput" value="Team 2" maxlength="20" aria-label="Team 2 name" />
                 <div class="player-list" id="team2Players">
-                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
-                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button></div>
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" aria-label="Remove player" onclick="removePlayer(this)">&times;</button></div>
+                    <div class="player-row"><input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" aria-label="Remove player" onclick="removePlayer(this)">&times;</button></div>
                 </div>
                 <button class="btn-add-player" onclick="addPlayer('team2Players')">+ Add Player</button>
             </div>
         </div>
         <div class="score-setting">
             <span>Play to</span>
-            <select id="targetScoreSelect">
+            <select id="targetScoreSelect" aria-label="Play to">
                 <option value="8">8 points</option>
                 <option value="10" selected>10 points</option>
                 <option value="15">15 points</option>
@@ -570,7 +574,7 @@
 
         <!-- Dial area -->
         <div id="dialContainer">
-            <canvas id="dialCanvas"></canvas>
+            <canvas id="dialCanvas" aria-label="Dial"></canvas>
             <div class="spectrum-label" id="spectrumLeft"></div>
             <div class="spectrum-label" id="spectrumRight"></div>
         </div>
@@ -745,7 +749,7 @@ function addPlayer(listId) {
     const list = document.getElementById(listId);
     const row = document.createElement('div');
     row.className = 'player-row';
-    row.innerHTML = '<input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" onclick="removePlayer(this)">&times;</button>';
+    row.innerHTML = '<input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" aria-label="Remove player" onclick="removePlayer(this)">&times;</button>';
     list.appendChild(row);
     row.querySelector('input').focus();
 }
@@ -782,7 +786,7 @@ function renderCardManager() {
         const expanded = expandedListIndices.has(li);
         html += `<div class="card-list-row">`;
         html += `<div class="card-list-header" onclick="toggleListExpand(${li})">`;
-        html += `<input type="checkbox" ${checked} onclick="event.stopPropagation(); toggleListSelection(${li})" />`;
+        html += `<input type="checkbox" ${checked} aria-label="Use ${escapeHtml(list.name)} list" onclick="event.stopPropagation(); toggleListSelection(${li})" />`;
         html += `<span class="list-name${list.builtin ? ' builtin' : ''}">${escapeHtml(list.name)}</span>`;
         html += `<span class="list-count">(${list.cards.length})</span>`;
         html += `<span class="list-expand${expanded ? ' open' : ''}">&#9660;</span>`;
