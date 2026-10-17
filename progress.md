@@ -12,6 +12,7 @@ Nothing in progress. The game is finished and live; only fixes when Tim reports 
 | Game (menu, look-away, clue, guess, counter-guess, reveal, game over) | Works, live on GitHub Pages |
 | Custom card lists | Work, but are not saved between visits (by design so far) |
 | Tests | None in the repo; checked with headless WebKit scripts |
+| 2026-10-17 fix | "Play to" select was white text on Safari's white native box: now drawn with `appearance:none` + `color-scheme:dark` + own chevron. "+ New List" uses an in-page `appPrompt()` dialog instead of the browser `prompt()` (Cancel/Escape/backdrop = nothing, Enter/OK = add) |
 | 2026-10-16 sweep | Fixed: winner when both teams pass the target in one round; names/cards with `<` or `&`; teammate with the same name as the hinter dropped from the guess line. Added labels, meta description, empty favicon (console 404), `100dvh` for iPhone toolbar. Pixel-identical otherwise |
 
 ## Authorized next steps

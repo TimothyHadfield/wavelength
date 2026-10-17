@@ -139,11 +139,15 @@
             gap: 12px; color: rgba(255, 255, 255, 0.7); font-size: 1rem;
         }
         .score-setting select {
-            padding: 8px 16px;
+            padding: 8px 34px 8px 16px;
             border: 2px solid rgba(255, 255, 255, 0.15); border-radius: 8px;
-            background: rgba(255, 255, 255, 0.08); color: #fff;
+            /* Safari draws its own light native box under the translucent background, so draw the box and arrow ourselves */
+            -webkit-appearance: none; appearance: none; color-scheme: dark;
+            background: rgba(255, 255, 255, 0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+            color: #fff;
             font-size: 1rem; font-family: inherit; outline: none; cursor: pointer;
         }
+        .score-setting select:focus { border-color: rgba(255, 255, 255, 0.35); }
         .score-setting select option { background: #1a1a2e; color: #fff; }
 
         .menu-error { color: #ff6b6b; font-size: 0.9rem; min-height: 1.2em; }
@@ -482,6 +486,32 @@
             font-family: inherit; outline: none;
         }
         .new-list-input-row input:focus { border-color: #00d9ff; }
+
+        /* ============ IN-PAGE PROMPT (replaces the browser prompt) ============ */
+        .app-dialog-backdrop {
+            position: fixed; inset: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; background: rgba(10, 10, 30, 0.75);
+        }
+        .app-dialog {
+            width: 100%; max-width: 340px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid rgba(0, 217, 255, 0.25); border-radius: 16px;
+            padding: 18px; display: flex; flex-direction: column; gap: 14px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+        .app-dialog-msg { font-size: 1rem; font-weight: 700; color: rgba(255,255,255,0.8); }
+        .app-dialog input {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+            color: #fff; font-size: 1rem; font-family: inherit; outline: none;
+            user-select: text; -webkit-user-select: text;
+        }
+        .app-dialog input:focus { border-color: #00d9ff; }
+        .app-dialog-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+        .app-dialog-buttons .btn { padding: 9px 24px; }
+        .btn-dialog-cancel { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); }
     </style>
 </head>
 <body>
@@ -835,8 +865,45 @@ function toggleListExpand(li) {
     renderCardManager();
 }
 
-function showNewListInput() {
-    const name = prompt('New list name:');
+// In-page replacement for the browser prompt(): resolves to the typed text, or null on Cancel/Escape/backdrop
+function appPrompt(msg, defaultValue = '') {
+    return new Promise(resolve => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'app-dialog-backdrop';
+        backdrop.innerHTML = '<div class="app-dialog" role="dialog" aria-modal="true">' +
+            '<div class="app-dialog-msg"></div>' +
+            '<input type="text" autocomplete="off" />' +
+            '<div class="app-dialog-buttons">' +
+            '<button class="btn btn-dialog-cancel" type="button">Cancel</button>' +
+            '<button class="btn btn-primary" type="button">OK</button>' +
+            '</div></div>';
+        const msgEl = backdrop.querySelector('.app-dialog-msg');
+        const input = backdrop.querySelector('input');
+        const [cancelBtn, okBtn] = backdrop.querySelectorAll('button');
+        msgEl.textContent = msg;
+        input.setAttribute('aria-label', msg);
+        input.value = defaultValue;
+        const close = (result) => {
+            document.removeEventListener('keydown', onKey, true);
+            backdrop.remove();
+            resolve(result);
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); close(null); }
+            else if (e.key === 'Enter') { e.preventDefault(); close(input.value); }
+        };
+        document.addEventListener('keydown', onKey, true);
+        cancelBtn.addEventListener('click', () => close(null));
+        okBtn.addEventListener('click', () => close(input.value));
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(null); });
+        document.body.appendChild(backdrop);
+        input.focus();
+        input.select();
+    });
+}
+
+async function showNewListInput() {
+    const name = await appPrompt('New list name:');
     if (!name || !name.trim()) return;
     CARD_LISTS.push({ name: name.trim(), builtin: false, cards: [] });
     const newIndex = CARD_LISTS.length - 1;
