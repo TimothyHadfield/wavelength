@@ -106,8 +106,12 @@ try {
   await page.tap('#settingsSheet .sheet-head .icon-btn');
   await page.tap('#lockGuessBtn');
   await page.waitForSelector('#counterPanel', { state: 'visible' });
+  const cyCounter = await page.evaluate(() => dialGeo.cy);
   await tapAt(120);
   await page.waitForSelector('#counterSubmitBtn', { state: 'visible' });
+  await page.waitForTimeout(250);
+  const cyPicked = await page.evaluate(() => dialGeo.cy);
+  check(Math.abs(cyPicked - cyCounter) < 1, 'dial stays put when a side is picked (Submit appears)', `${cyCounter} -> ${cyPicked}`);
   const pre = await page.evaluate(() => document.getElementById('team1ScoreDisplay').textContent + ' / ' + document.getElementById('team2ScoreDisplay').textContent);
   await page.tap('#counterSubmitBtn');
   await page.waitForTimeout(650);
@@ -126,6 +130,11 @@ try {
   check(board2[0].endsWith(': ' + board2[2][0]) && board2[1].endsWith(': ' + board2[2][1]), 'scoreboard shows the new scores after the reveal', JSON.stringify(board2));
   const sc = await page.evaluate(() => ({ s: gameState.teams.map(t => t.score), p: gameState.round.pointsAwarded, ph: gameState.phase }));
   check(sc.ph === 'REVEAL' && sc.p && typeof sc.p.activeTeam === 'number', 'round reaches the reveal with points', JSON.stringify(sc));
+  const card = await page.evaluate(() => ({ why: (document.querySelector('#revealScoreCard .score-why') || {}).textContent || '', info: document.getElementById('roundInfo').textContent }));
+  check(/called (left|right)/.test(card.why) && /to 10/.test(card.info), 'result card says why the other team got its point; target score shown', JSON.stringify(card));
+  // cards seen in this game are remembered, so the next game starts with fresh ones
+  const fresh = await page.evaluate(() => { const seen = new Set(JSON.parse(localStorage.getItem('wavelength:seen') || '[]')); const k = c => c.left + '|' + c.right; const c1 = gameState.round.spectrumCard; const saved = gameState.usedCardIndices.slice(); gameState.usedCardIndices = []; const firsts = Array.from({ length: 30 }, () => drawCard()); gameState.usedCardIndices = saved; return { had: seen.has(k(c1)), repeats: firsts.filter(c => seen.has(k(c))).length }; });
+  check(fresh.had && fresh.repeats === 0, 'next game draws cards not seen before', JSON.stringify(fresh));
   // a reload at the reveal must not score the round twice
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#revealPanel', { state: 'visible', timeout: 5000 });

@@ -401,9 +401,13 @@ function drawTargetZone(ctx, cx, cy, r, targetAngle, alpha) {
         ctx.strokeStyle = `rgba(30, 70, 200, ${0.8 * alpha})`;
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
+        // two pieces, with a gap where the "4" sits, so the line never runs through it
+        const c = Math.cos(centerRad), s = Math.sin(centerRad), gapIn = r * 0.48, gapOut = r * 0.62;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(centerRad) * r, cy + Math.sin(centerRad) * r);
+        ctx.lineTo(cx + c * gapIn, cy + s * gapIn);
+        ctx.moveTo(cx + c * gapOut, cy + s * gapOut);
+        ctx.lineTo(cx + c * r, cy + s * r);
         ctx.stroke();
         ctx.setLineDash([]);
     }
@@ -652,14 +656,16 @@ function resizeCanvas() {
     // sits just under the flat edge. The dial + card group is centred in the space left over.
     const padTop = 12, padBottom = 8;
     const specH = h < 300 ? 40 : 52;
-    // gap = 12px + the knob's radius (r * 0.08), so the knob never touches the card
-    const maxRadiusByHeight = (h - padTop - padBottom - specH - 12) / 1.08;
+    // gap = 12px + the knob's radius (r * 0.08), so the knob never touches the card;
+    // the rim (r * 0.045, at least 6px) sits above the face and must fit too
+    const maxRadiusByHeight = Math.min((h - padTop - padBottom - specH - 12) / 1.125, (h - padTop - padBottom - specH - 18) / 1.08);
     const maxRadiusByWidth = (w - 20) / 2;
     dialGeo.radius = Math.max(0, Math.min(maxRadiusByHeight, maxRadiusByWidth));
     const specGap = 12 + dialGeo.radius * 0.08;
-    const groupH = dialGeo.radius + specGap + specH;
+    const rim = Math.max(6, dialGeo.radius * 0.045);
+    const groupH = rim + dialGeo.radius + specGap + specH;
     const top = Math.max(padTop, (h - groupH) / 2);
-    dialGeo.cy = top + dialGeo.radius;
+    dialGeo.cy = top + rim + dialGeo.radius;
     dialGeo.cx = w / 2;
     const spec = document.getElementById('specCard');
     if (spec) {
@@ -708,7 +714,7 @@ function handlePointerDown(e) {
         if (isInDial(pos.x, pos.y)) {
             counterSelectedSide = getSideOfPointer(pos.x, pos.y);
             counterHoverSide = null;
-            document.getElementById('counterSubmitBtn').style.display = 'inline-block';
+            document.getElementById('counterSubmitBtn').style.visibility = 'visible';
             renderDial();
         }
     }
@@ -828,11 +834,23 @@ function setupEventListeners() {
 // ================================================================
 // CARD & SCORING LOGIC
 // ================================================================
+// Cards seen on this device in earlier games come last, so the next game doesn't repeat them
+const SEEN_KEY = 'wavelength:seen';
+const cardKey = (c) => c.left + '|' + c.right;
+function loadSeen() { try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]')); } catch (e) { return new Set(); } }
 function drawCard() {
-    const available = SPECTRUM_CARDS.map((_, i) => i).filter(i => !gameState.usedCardIndices.includes(i));
+    let available = SPECTRUM_CARDS.map((_, i) => i).filter(i => !gameState.usedCardIndices.includes(i));
     if (available.length === 0) { gameState.usedCardIndices = []; return drawCard(); }
-    const idx = available[Math.floor(Math.random() * available.length)];
+    const seen = loadSeen();
+    let fresh = available.filter(i => !seen.has(cardKey(SPECTRUM_CARDS[i])));
+    if (fresh.length === 0) { // every card in these lists has been seen: start the cycle again
+        SPECTRUM_CARDS.forEach(c => seen.delete(cardKey(c)));
+        fresh = available;
+    }
+    const idx = fresh[Math.floor(Math.random() * fresh.length)];
     gameState.usedCardIndices.push(idx);
+    seen.add(cardKey(SPECTRUM_CARDS[idx]));
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen].slice(-2000))); } catch (e) { /* not saved: cards may repeat */ }
     return SPECTRUM_CARDS[idx];
 }
 
@@ -916,7 +934,7 @@ function updateScoreboard() {
     const hinter = getCurrentHinter();
     const team = gameState.teams[gameState.activeTeamIndex];
     document.getElementById('roundInfo').innerHTML =
-        `<div>Round ${gameState.roundNumber}</div><div class="hinter-info" style="color:${team.color}">${escapeHtml(hinter)} is hinting</div>`;
+        `<div>Round ${gameState.roundNumber} · to ${gameState.targetScore}</div><div class="hinter-info" style="color:${team.color}">${escapeHtml(hinter)} is hinting</div>`;
 }
 
 function updateSpectrumLabels() {
@@ -1036,10 +1054,10 @@ function setPhase(newPhase) {
         case GamePhase.COUNTER_GUESS: {
             const opposingTeam = gameState.teams[1 - gameState.activeTeamIndex];
             document.getElementById('counterTitle').innerHTML =
-                `<span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span> — click the side you think the target center is on`;
+                `<span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span> — tap the side you think the target center is on`;
             counterHoverSide = null;
             counterSelectedSide = null;
-            document.getElementById('counterSubmitBtn').style.display = 'none';
+            document.getElementById('counterSubmitBtn').style.visibility = 'hidden'; // keeps its space: the dial must not jump when a side is picked
             showClueBar(true);
             showPanel('counterPanel');
             renderDial();
@@ -1058,6 +1076,12 @@ function setPhase(newPhase) {
             html += `<div class="score-divider"></div>`;
             html += `<div class="score-row"><span style="color:${activeTeam.color}">${escapeHtml(activeTeam.name)}</span><span class="points ${points.activeTeam > 0 ? 'gold' : 'red'}">+${points.activeTeam}</span></div>`;
             html += `<div class="score-row"><span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span><span class="points ${points.opposingTeam > 0 ? 'green' : 'red'}">+${points.opposingTeam}</span></div>`;
+            const call = gameState.round.counterGuess;
+            if (call) {
+                const side = call === 'LEFT' ? 'left' : 'right';
+                const why = points.activeTeam === 4 ? `called ${side} (no point on a bullseye)` : `called ${side}: ${points.opposingTeam ? 'correct' : 'wrong'}`;
+                html += `<div class="score-why">${escapeHtml(opposingTeam.name)} ${why}</div>`;
+            }
             document.getElementById('revealScoreCard').innerHTML = html;
 
             showClueBar(true);
@@ -1191,7 +1215,7 @@ function resumeGame() {
 // ================================================================
 // INITIALIZATION
 // ================================================================
-const BUILD = 4;
+const BUILD = 5;
 
 // ================================================================
 // MY STATS (game-profile kit; Wavelength's achievements are in js/profile-wl.js)
@@ -1237,6 +1261,7 @@ function renderSettingsSheet() {
     const inGame = gameState.phase !== GamePhase.MENU && gameState.phase !== GamePhase.GAME_OVER;
     const body = document.getElementById('settingsBody');
     body.innerHTML = (inGame ? '<div class="set-row"><span class="lab">This game</span><button class="btn btn-small btn-dialog-cancel" id="endGameBtn">End game</button></div>' : '') +
+        '<div class="set-row"><span class="lab">Rules</span><button class="btn btn-small btn-dialog-cancel" onclick="closeSheet(\'settingsSheet\');openSheet(\'rulesSheet\')">How to play</button></div>' +
         '<h4 class="set-h">Sound &amp; effects</h4><div id="fxSet"></div>' +
         `<p class="set-foot">Build ${BUILD}</p>`;
     if (window.FX) FX.renderSettings(document.getElementById('fxSet'));

@@ -83,6 +83,8 @@ try {
           r: Math.round(dialGeo.radius),
           dialBottom: Math.round(cont.top + dialGeo.cy),
           dialTop: Math.round(cont.top + dialGeo.cy - dialGeo.radius),
+          // the device's rim around the face must not be cut off by the canvas edge
+          rimTop: Math.round(dialGeo.cy - dialGeo.radius - Math.max(6, dialGeo.radius * 0.045)),
         };
       }, ph.btn);
       const tag = `${sz.id} ${ph.id}`;
@@ -92,6 +94,7 @@ try {
       if (ph.btn) ok = check(m.btn && m.btn.w > 0 && m.btn.top >= 0 && m.btn.bottom <= m.vh, `${tag}: button ${ph.btn} not fully on screen (${JSON.stringify(m.btn)}, vh ${m.vh})`) && ok;
       if (ph.id !== 'menu' && ph.id !== 'prep') {
         ok = check(m.r >= sz.minR, `${tag}: dial radius ${m.r} < ${sz.minR}`) && ok;
+        ok = check(m.rimTop >= 0, `${tag}: top of the dial rim cut off by ${-m.rimTop}px`) && ok;
         ok = check(m.dialBottom <= m.vh && m.dialTop >= 0, `${tag}: dial off screen (${m.dialTop}..${m.dialBottom}, vh ${m.vh})`) && ok;
       }
       if (SHOTS) await page.screenshot({ path: join(SHOTS, `${sz.id}-${ph.id}.png`) });

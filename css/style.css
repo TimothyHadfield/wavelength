@@ -575,6 +575,8 @@ body {
 .icon-btn:hover { background: rgba(255, 255, 255, 0.16); }
 .icon-btn svg { width: 18px; height: 18px; }
 
+.score-why { font-size: 0.78rem; color: var(--muted); text-align: center; margin-top: 2px; }
+
 /* ============ KIT COLOURS (fx.js settings rows read these) ============ */
 :root {
     --text: #ffffff; --muted: rgba(255, 255, 255, 0.55); --line: rgba(255, 255, 255, 0.12);
