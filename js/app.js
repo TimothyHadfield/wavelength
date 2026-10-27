@@ -873,7 +873,7 @@ function resolveRound() {
     gameState.round.pointsAwarded = { activeTeam: activeTeamPoints, opposingTeam: counterCorrect ? 1 : 0 };
     gameState.teams[gameState.activeTeamIndex].score += activeTeamPoints;
     gameState.teams[opposingTeamIndex].score += (counterCorrect ? 1 : 0);
-    gameState.roundHistory.push({ ...gameState.round });
+    gameState.roundHistory.push({ ...gameState.round, team: gameState.activeTeamIndex });
     return gameState.round.pointsAwarded;
 }
 
@@ -978,6 +978,7 @@ const PHASE_SOUND = { PSYCHIC_PREP: 'turn', GUESS_PHASE: 'cardFlip', COUNTER_GUE
 function setPhase(newPhase) {
     if (window.FX && PHASE_SOUND[newPhase] && gameState.phase !== newPhase) FX.play(PHASE_SOUND[newPhase]);
     gameState.phase = newPhase;
+    saveGame();
 
     switch (newPhase) {
         case GamePhase.MENU:
@@ -1046,7 +1047,7 @@ function setPhase(newPhase) {
         }
 
         case GamePhase.REVEAL: {
-            const points = resolveRound();
+            const points = gameState.round.pointsAwarded || resolveRound();
             playReveal(points);
 
             const activeTeam = gameState.teams[gameState.activeTeamIndex];
@@ -1122,6 +1123,9 @@ function startGame() {
     gameState.roundNumber = 1;
     gameState.usedCardIndices = [];
     gameState.roundHistory = [];
+    gameState.mode = 'friends';
+    gameState.recorded = false;
+    gameState.myTeam = -1; // one phone: nobody's team is "mine"
     gameState.targetScore = parseInt(document.getElementById('targetScoreSelect').value);
 
     gameState.round = { spectrumCard: drawCard(), targetAngle: generateTargetAngle(), hinterName: getCurrentHinter(), clue: '', guessAngle: 90, counterGuess: null, pointsAwarded: null, revealed: false };
@@ -1149,13 +1153,76 @@ function nextRound() {
 
 function goToMenu() {
     gameState.phase = GamePhase.MENU;
+    saveGame();
     showScreen('menuScreen');
+}
+
+// ================================================================
+// SAVED GAME: a reload (or iPhone dropping the tab) comes back to the game in progress
+// ================================================================
+const GAME_KEY = 'wavelength:game';
+function saveGame() {
+    try {
+        const live = gameState.phase !== GamePhase.MENU && gameState.phase !== GamePhase.GAME_OVER && gameState.mode !== 'online';
+        if (!live) { localStorage.removeItem(GAME_KEY); return; }
+        localStorage.setItem(GAME_KEY, JSON.stringify({ v: 1, state: gameState, pool: SPECTRUM_CARDS }));
+    } catch (e) { /* storage blocked or full: the game just isn't saved */ }
+}
+function resumeGame() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null'); } catch (e) { saved = null; }
+    const st = saved && saved.v === 1 && saved.state;
+    if (!st || !Array.isArray(st.teams) || st.teams.length !== 2 || !st.round || !st.round.spectrumCard || !Array.isArray(saved.pool) || !saved.pool.length) return false;
+    if (!GamePhase[st.phase] || st.phase === GamePhase.MENU || st.phase === GamePhase.GAME_OVER) return false;
+    Object.assign(gameState, st);
+    SPECTRUM_CARDS = saved.pool;
+    showScreen('gameScreen');
+    updateScoreboard();
+    updateSpectrumLabels();
+    document.getElementById('clueBarText').textContent = gameState.round.clue || '';
+    resizeCanvas();
+    // the hinter's screen is never shown straight after a reload: everyone looks away again first
+    const phase = st.phase === GamePhase.CLUE_ENTRY ? GamePhase.PSYCHIC_PREP : st.phase;
+    gameState.phase = GamePhase.MENU; // so the phase sound plays like a fresh turn
+    setPhase(phase);
+    return true;
 }
 
 // ================================================================
 // INITIALIZATION
 // ================================================================
-const BUILD = 3;
+const BUILD = 4;
+
+// ================================================================
+// MY STATS (game-profile kit; Wavelength's achievements are in js/profile-wl.js)
+// ================================================================
+function setupProfile() {
+    if (!window.Profile || !window.WL_PROFILE) return;
+    Profile.init({
+        game: 'wavelength',
+        achievements: WL_PROFILE.achievements,
+        modes: { friends: { name: 'One phone' }, online: { name: 'Online' }, computer: { name: 'Solo' } },
+        onChange: (what) => { if (what === 'me' || what === 'import') paintMe(); },
+    });
+    paintMe();
+}
+function paintMe() {
+    const b = document.getElementById('meBtn');
+    if (b && window.Profile) b.innerHTML = Profile.avatarSVG(Profile.avatar, 26) + '<span>My stats</span>';
+}
+// Called once when a game ends (the recorded flag stops a second count)
+function onGameOver(winner) {
+    if (!window.Profile || !window.WL_PROFILE || gameState.recorded) return;
+    gameState.recorded = true;
+    const winnerTeam = gameState.teams.indexOf(winner);
+    Profile.recordResult(WL_PROFILE.resultFromGame({
+        mode: gameState.mode || 'friends',
+        rounds: gameState.roundHistory.map(r => ({ team: r.team, points: r.pointsAwarded })),
+        finalScores: gameState.teams.map(t => t.score),
+        winnerTeam,
+        myTeam: gameState.myTeam,
+    }));
+}
 
 function setupFx() {
     if (!window.FX) return;
@@ -1184,16 +1251,20 @@ function renderSettingsSheet() {
 function openSettings() { renderSettingsSheet(); openSheet('settingsSheet'); }
 function endGameToMenu() {
     if (typeof onEndGame === 'function' && onEndGame() === false) return;
-    gameState.phase = GamePhase.MENU;
-    showScreen('menuScreen');
+    goToMenu();
 }
 
 function init() {
     setupFx();
+    setupProfile();
     setupEventListeners();
     resizeCanvas();
     renderCardManager();
-    showScreen('menuScreen');
+    if (!resumeGame()) showScreen('menuScreen');
+    if (window.PWA) PWA.safeToReload = () =>
+        (gameState.phase === GamePhase.MENU || gameState.phase === GamePhase.GAME_OVER) && gameState.mode !== 'online' &&
+        !document.querySelector('.sheet-backdrop.open, .app-dialog-backdrop, .pf-ov') &&
+        !(document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
 }
 
 window.addEventListener('DOMContentLoaded', init);

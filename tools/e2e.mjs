@@ -92,6 +92,11 @@ try {
   const g3 = await page.evaluate(() => gameState.round.guessAngle);
   check(Math.abs(g2 - 1 - g3) < 0.01, 'arrow key moves the pointer 1°');
   await shot(page, 'guess');
+  // a reload (or iPhone dropping the tab) mid-turn comes back to the same turn
+  await page.reload({ waitUntil: 'load' });
+  const back = await page.evaluate(() => ({ ph: gameState.phase, clue: gameState.round.clue, vis: !!document.getElementById('guessPanel').offsetParent, scr: document.getElementById('gameScreen').classList.contains('active') }));
+  check(back.ph === 'GUESS_PHASE' && back.clue === 'Warm toast' && back.vis && back.scr, 'reload mid-guess resumes the same turn', JSON.stringify(back));
+  await tapAt(30);
   // settings sheet mid-game: sound rows + End game
   await page.tap('.game-menu-btn');
   await page.waitForSelector('#settingsSheet.open');
@@ -121,9 +126,29 @@ try {
   check(board2[0].endsWith(': ' + board2[2][0]) && board2[1].endsWith(': ' + board2[2][1]), 'scoreboard shows the new scores after the reveal', JSON.stringify(board2));
   const sc = await page.evaluate(() => ({ s: gameState.teams.map(t => t.score), p: gameState.round.pointsAwarded, ph: gameState.phase }));
   check(sc.ph === 'REVEAL' && sc.p && typeof sc.p.activeTeam === 'number', 'round reaches the reveal with points', JSON.stringify(sc));
+  // a reload at the reveal must not score the round twice
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#revealPanel', { state: 'visible', timeout: 5000 });
+  const sc2 = await page.evaluate(() => ({ s: gameState.teams.map(t => t.score), ph: gameState.phase }));
+  check(sc2.ph === 'REVEAL' && JSON.stringify(sc2.s) === JSON.stringify(sc.s), 'reload at the reveal keeps the same scores', JSON.stringify(sc) + ' -> ' + JSON.stringify(sc2));
+  await page.waitForTimeout(1400);
   await page.tap('#nextRoundBtn');
   await page.waitForSelector('#psychicPrepOverlay.active');
   check(true, 'next turn starts');
+  // finish the game: the result lands in My stats and the saved game is cleared
+  const before = await page.evaluate(() => Profile.stats().games);
+  await page.evaluate(() => { gameState.teams[0].score = gameState.targetScore; nextRound(); });
+  await page.waitForSelector('#gameOverScreen.active');
+  const done = await page.evaluate(() => ({ games: Profile.stats().games, saved: localStorage.getItem('wavelength:game') }));
+  check(done.games === before + 1 && done.saved === null, 'finished game is recorded in My stats and the save is cleared', JSON.stringify({ before, ...done }));
+  await page.waitForTimeout(400);
+  await shot(page, 'game-over');
+  await page.click('#gameOverScreen .btn-primary');
+  await page.tap('#meBtn');
+  await page.waitForSelector('.pf-ov');
+  check(await page.isVisible('.pf-ov'), 'My stats opens from the menu');
+  await page.waitForTimeout(400);
+  await shot(page, 'my-stats');
   check(errs.length === 0, 'no page errors', errs.join(' | '));
   await ctx.close();
 } finally {

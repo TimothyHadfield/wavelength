@@ -1,0 +1,14 @@
+{
+  "repo": "wavelength",
+  "ready": "document.getElementById('startGameBtn') !== null && typeof startGame === 'function' && (gameState.phase === 'MENU' || gameState.phase === 'GUESS_PHASE')",
+  "play": [
+    "document.querySelectorAll('.player-list input').forEach((el, i) => { el.value = 'P' + (i + 1); })",
+    "startGame()",
+    "document.getElementById('psychicReadyBtn').click()",
+    "document.getElementById('clueInput').value = 'Lukewarm'",
+    "document.getElementById('submitClueBtn').click()"
+  ],
+  "played": "gameState.phase === 'GUESS_PHASE' && gameState.round.clue === 'Lukewarm'",
+  "safe": "endGameToMenu()",
+  "debug": "JSON.stringify({ phase: gameState.phase, clue: gameState.round && gameState.round.clue })"
+}

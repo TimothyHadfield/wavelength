@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node --test \"test/*.test.mjs\"",
     "layout": "node tools/layout-check.mjs",
-    "e2e": "node tools/e2e.mjs"
+    "e2e": "node tools/e2e.mjs",
+    "pwa": "node tools/pwa-check.mjs"
   }
 }

@@ -586,6 +586,13 @@ body {
 
 .corner-btns { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
 .corner-btns .icon-btn { font-size: 1.05rem; font-weight: 700; }
+.corner-btns.left { right: auto; left: 10px; }
+.me-btn {
+    height: 34px; padding: 0 12px 0 4px; border: none; border-radius: 17px;
+    background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem; font-weight: 600; font-family: inherit;
+}
+.me-btn:hover { background: rgba(255, 255, 255, 0.16); }
 .game-menu-btn { position: absolute; top: 8px; right: 8px; z-index: 6; }
 
 .phase-panel.waiting { visibility: hidden; }
