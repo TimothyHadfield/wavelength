@@ -623,7 +623,9 @@ function renderDial() {
     }
 
     // Pointer
-    const showPointer = [GamePhase.GUESS_PHASE, GamePhase.COUNTER_GUESS, GamePhase.REVEAL].includes(gameState.phase);
+    // NET_WAIT: an online phone waiting on someone else; it shows the pointer once the guess is locked
+    const showPointer = [GamePhase.GUESS_PHASE, GamePhase.COUNTER_GUESS, GamePhase.REVEAL].includes(gameState.phase) ||
+        (gameState.phase === 'NET_WAIT' && !!gameState.round.guessLocked);
     if (showPointer) {
         drawPointer(ctx, cx, cy, radius, gameState.round.guessAngle);
     }
@@ -780,7 +782,7 @@ function stopNudge() {
     if (nudgeTimer) { clearTimeout(nudgeTimer); nudgeTimer = null; if (typeof onGuessMoved === 'function') onGuessMoved(gameState.round.guessAngle, true); }
 }
 // Overridden by online play (only the guessing team may move the dial there)
-function canMoveDial() { return true; }
+function canMoveDial() { return gameState.mode !== 'online' || !!(window.WLNet && WLNet.canMove()); }
 
 function setupEventListeners() {
     const canvas = document.getElementById('dialCanvas');
@@ -802,14 +804,17 @@ function setupEventListeners() {
 
     document.getElementById('psychicReadyBtn').addEventListener('click', () => setPhase(GamePhase.CLUE_ENTRY));
     document.getElementById('submitClueBtn').addEventListener('click', submitClue);
-    document.getElementById('lockGuessBtn').addEventListener('click', () => setPhase(GamePhase.COUNTER_GUESS));
+    // online play (js/wl-net.mjs): each decision goes to the room instead of moving the game on here
+    const net = () => gameState.mode === 'online' && window.WLNet;
+    document.getElementById('lockGuessBtn').addEventListener('click', () => net() ? WLNet.guess(gameState.round.guessAngle) : setPhase(GamePhase.COUNTER_GUESS));
     document.getElementById('counterSubmitBtn').addEventListener('click', () => {
         if (counterSelectedSide) {
+            if (net()) { WLNet.counter(counterSelectedSide); return; }
             gameState.round.counterGuess = counterSelectedSide;
             setPhase(GamePhase.REVEAL);
         }
     });
-    document.getElementById('nextRoundBtn').addEventListener('click', nextRound);
+    document.getElementById('nextRoundBtn').addEventListener('click', () => net() ? WLNet.next() : nextRound());
     [['nudgeLeft', -1], ['nudgeRight', 1]].forEach(([id, dir]) => {
         const b = document.getElementById(id);
         b.addEventListener('pointerdown', (e) => { e.preventDefault(); startNudge(dir); });
@@ -1160,6 +1165,7 @@ function startGame() {
 function submitClue() {
     const clue = document.getElementById('clueInput').value.trim();
     if (!clue) return;
+    if (gameState.mode === 'online' && window.WLNet) { WLNet.clue(clue); return; }
     gameState.round.clue = clue;
     setPhase(GamePhase.GUESS_PHASE);
 }
@@ -1176,6 +1182,7 @@ function nextRound() {
 }
 
 function goToMenu() {
+    if (gameState.mode === 'online' && window.WLNet) { WLNet.leave(); return; }
     gameState.phase = GamePhase.MENU;
     saveGame();
     showScreen('menuScreen');
@@ -1215,7 +1222,7 @@ function resumeGame() {
 // ================================================================
 // INITIALIZATION
 // ================================================================
-const BUILD = 5;
+const BUILD = 7;
 
 // ================================================================
 // MY STATS (game-profile kit; Wavelength's achievements are in js/profile-wl.js)

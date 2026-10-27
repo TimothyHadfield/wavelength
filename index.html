@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Wavelength">
     <link rel="stylesheet" href="css/table.css?v=5">
     <link rel="stylesheet" href="css/profile.css?v=6">
-    <link rel="stylesheet" href="css/style.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 
@@ -62,6 +62,7 @@
             <button class="btn-cards" id="cardsBtn" onclick="openSheet('cardsSheet')" aria-label="Spectrum card lists">
                 <span>Cards</span> <b id="cardsBtnCount"></b>
             </button>
+            <button class="btn-cards" id="onlineBtn" onclick="if(window.WLNet)WLNet.open()" aria-label="Play online, each on their own phone">Play online</button>
         </div>
 
         <div class="menu-error" id="menuError"></div>
@@ -109,6 +110,10 @@
                     <div id="counterPanel" class="phase-panel">
                         <h3 id="counterTitle">Tap the side you think the target center is on</h3>
                         <button class="btn btn-primary" id="counterSubmitBtn" style="visibility:hidden;">Submit</button>
+                    </div>
+                    <!-- Online: waiting for someone else's move -->
+                    <div id="netWaitPanel" class="phase-panel">
+                        <h3 id="netWaitText"></h3>
                     </div>
                     <!-- Reveal panel -->
                     <div id="revealPanel" class="phase-panel">
@@ -158,6 +163,14 @@
         </div>
     </div>
 
+    <!-- ============ SHEET: online room (js/wl-net.mjs fills it) ============ -->
+    <div class="sheet-backdrop" id="onlineSheet" onclick="if(event.target===this)closeSheet('onlineSheet')">
+        <div class="sheet short" role="dialog" aria-modal="true" aria-label="Play online">
+            <div class="sheet-head"><span>Play online</span><button class="icon-btn" onclick="closeSheet('onlineSheet')" aria-label="Close">&times;</button></div>
+            <div class="sheet-body net-body" id="onlineBody"></div>
+        </div>
+    </div>
+
     <!-- ============ SHEET: settings ============ -->
     <div class="sheet-backdrop" id="settingsSheet" onclick="if(event.target===this)closeSheet('settingsSheet')">
         <div class="sheet short" role="dialog" aria-modal="true" aria-label="Settings">
@@ -187,7 +200,8 @@
 <script src="js/profile.js?v=6"></script>
 <script src="js/profile-wl.js?v=5"></script>
 <script src="js/cards.js?v=5"></script>
-<script src="js/pwa.js?v=6" data-version="6"></script>
-<script src="js/app.js?v=5"></script>
+<script src="js/pwa.js?v=6" data-version="7"></script>
+<script src="js/app.js?v=7"></script>
+<script type="module" src="js/wl-net.mjs?v=7"></script>
 </body>
 </html>

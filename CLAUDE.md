@@ -1,6 +1,6 @@
 # Wavelength
 
-A browser version of the party game Wavelength for two teams sharing one screen (Tim's phone or laptop, passed around in person). One player (the "Hinter") sees a hidden target on a half-circle dial between two opposites, types a clue, their team turns the dial, the other team calls left/right, then a shutter reveal scores it. No accounts, no backend. Saved on the device only: custom card lists and ticks, the game in progress, seen cards, My stats, sound settings.
+A browser version of the party game Wavelength for two teams sharing one screen (Tim's phone or laptop, passed around in person). One player (the "Hinter") sees a hidden target on a half-circle dial between two opposites, types a clue, their team turns the dial, the other team calls left/right, then a shutter reveal scores it. Since 2026-10-27 also **online rooms** (each person on their own phone, 4–8 people, room code) through the shared `_online` kit on Firestore `th-board-games`. No accounts. Saved on the device only: custom card lists and ticks, the game in progress, seen cards, My stats, sound settings.
 
 - **Live:** https://timothyhadfield.github.io/wavelength/ (GitHub Pages, repo `TimothyHadfield/wavelength`, branch `main`, root folder)
 - Handoff notes: `progress.md` (state, traps, NOT verified), `chat.md` (session log). Global rules: `~/.claude/CLAUDE.md`.
@@ -14,9 +14,10 @@ A browser version of the party game Wavelength for two teams sharing one screen 
   - Dial: `resizeCanvas()` fits dial + rim + spectrum card (`#specCard`) into `#dialContainer` (ResizeObserver). `setGuess()` clamps, ticks per 9° section. `playReveal()` = shutter animation, then sounds/celebration; the score card and scoreboard wait for it.
   - `drawCard()` prefers cards not in `wavelength:seen` (cards seen in earlier games on this device).
   - `setupProfile()` / `onGameOver()` (records once per game), `setupFx()`, `renderSettingsSheet()`, `PWA.safeToReload` (only MENU/GAME_OVER, no sheet open, no input focused).
+- Online: `js/wave-online.mjs` (ES module: the game for the kit — teams by join order, phases clue→guess→counter→reveal→over, target only in the Hinter's private doc until the reveal; `score()` matches app.js), `js/wl-net.mjs` (module loaded last: room sheet `#onlineSheet`, lobby, maps each room snapshot onto app.js screens via `setPhase`, `NET_WAIT` panel for "someone else's move"; `window.WLNet` is what app.js calls when `gameState.mode === 'online'`). It reads app.js's top-level `let/const` (`gameState`, `GamePhase`, `SPECTRUM_CARDS`, `CARD_LISTS`, `selectedListIndices`) by bare name: they are global bindings, **not** `window.` properties. `js/online.js` = kit copy (`-text`), loaded only when a room is opened or resumed.
 - `js/cards.js`: `WL_LISTS`, 11 built-in lists, 471 original cards (Basic 71 + 10 themed × 40).
 - `js/profile-wl.js`: `WL_PROFILE` = Wavelength's 8 achievements + `resultFromGame()` (pure, node-tested).
-- Kit copies, **byte-for-byte, never edit here** (`.gitattributes` `-text`): `js/fx.js` (_fx), `css/table.css` (_table 1.0.2), `js/profile.js` + `css/profile.css` (_profile), `sw.js` + `js/pwa.js` + `tools/make-icons.mjs` + `tools/pwa-check.mjs` (_pwa). Update by re-copying from `Board and Card Games/_<kit>/`.
+- Kit copies, **byte-for-byte, never edit here** (`.gitattributes` `-text`): `js/online.js` (_online v2), `js/fx.js` (_fx), `css/table.css` (_table 1.0.2), `js/profile.js` + `css/profile.css` (_profile), `sw.js` + `js/pwa.js` + `tools/make-icons.mjs` + `tools/pwa-check.mjs` (_pwa). Update by re-copying from `Board and Card Games/_<kit>/`.
 - `manifest.webmanifest`, `icons/`, `icon.svg`, `apple-touch-icon.png`: home-screen install.
 - `README.md`: GitHub showcase page (screenshots in `docs/screenshots/`).
 
@@ -37,6 +38,7 @@ A browser version of the party game Wavelength for two teams sharing one screen 
 - `npm run e2e` (`node tools/e2e.mjs [webkit|chrome] [--shots DIR]`): 22 checks at 393×659 touch: cards sheet, saved lists, tap/nudge/arrow on the dial, resume after reload, settings, shutter, no spoiler, no dial jumps, result reason, fresh cards, no double score after reload, My stats.
 - `npm run layout` (`node tools/layout-check.mjs [webkit|chrome] [--shots DIR]`): 5 sizes (393, 320, 659×393, 1280, 1440) × 6 phases: no overflow, no scroll, button on screen, dial size, rim not cut off.
 - `npm run pwa` (`node tools/pwa-check.mjs`, config `tests/pwa-check.json`): 18 checks (offline, never an old build, safe reload).
+- `node test/ui.online.mjs <baseUrl> [outDir]`: 4 headless phones (one browser) make/join a room and tap through a game to 8 on real Firestore (~1 min). Not in `npm test` (needs internet; uses free quota).
 - `SITE_ROOT=<folder>` points e2e/layout at another build (fail-first checks against main).
 
 ## Deploy
