@@ -7,12 +7,17 @@
     <meta name="description" content="The party game Wavelength for two teams sharing one phone or laptop: give a clue, turn the dial, score points.">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/table.css?v=3">
+    <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
     <!-- ============ MENU SCREEN ============ -->
     <div id="menuScreen" class="screen active">
+      <div class="corner-btns">
+        <button class="icon-btn" onclick="openSheet('rulesSheet')" aria-label="How to play">?</button>
+        <button class="icon-btn" onclick="openSettings()" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+      </div>
       <div class="menu-inner">
         <div class="menu-title">WAVELENGTH</div>
         <div class="menu-subtitle">Get on the same wavelength</div>
@@ -55,7 +60,7 @@
     </div>
 
     <!-- ============ GAME SCREEN ============ -->
-    <div id="gameScreen" class="screen">
+    <div id="gameScreen" class="screen tbl-surface">
         <div id="scoreboard">
             <div class="team-score team1" id="team1ScoreDisplay">Team 1: 0</div>
             <div class="round-info" id="roundInfo">
@@ -84,7 +89,11 @@
                     <!-- Guess panel -->
                     <div id="guessPanel" class="phase-panel">
                         <p id="guessInstruction">Drag the pointer to guess</p>
-                        <button class="btn btn-primary" id="lockGuessBtn">Lock In Guess</button>
+                        <div class="guess-row">
+                            <button class="nudge-btn" id="nudgeLeft" aria-label="Move pointer left">&lsaquo;</button>
+                            <button class="btn btn-primary" id="lockGuessBtn">Lock In Guess</button>
+                            <button class="nudge-btn" id="nudgeRight" aria-label="Move pointer right">&rsaquo;</button>
+                        </div>
                     </div>
                     <!-- Counter guess panel -->
                     <div id="counterPanel" class="phase-panel">
@@ -102,6 +111,7 @@
             <!-- Dial area -->
             <div id="dialContainer">
                 <canvas id="dialCanvas" aria-label="Dial"></canvas>
+                <button class="icon-btn game-menu-btn" onclick="openSettings()" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
                 <div class="spec-card" id="specCard">
                     <div class="spec-half left"><span class="spec-arrow">&larr;</span><span id="spectrumLeft"></span></div>
                     <div class="spec-half right"><span id="spectrumRight"></span><span class="spec-arrow">&rarr;</span></div>
@@ -138,7 +148,33 @@
         </div>
     </div>
 
-<script src="js/cards.js?v=2"></script>
-<script src="js/app.js?v=2"></script>
+    <!-- ============ SHEET: settings ============ -->
+    <div class="sheet-backdrop" id="settingsSheet" onclick="if(event.target===this)closeSheet('settingsSheet')">
+        <div class="sheet short" role="dialog" aria-modal="true" aria-label="Settings">
+            <div class="sheet-head"><span>Settings</span><button class="icon-btn" onclick="closeSheet('settingsSheet')" aria-label="Close">&times;</button></div>
+            <div class="sheet-body" id="settingsBody"></div>
+        </div>
+    </div>
+
+    <!-- ============ SHEET: how to play ============ -->
+    <div class="sheet-backdrop" id="rulesSheet" onclick="if(event.target===this)closeSheet('rulesSheet')">
+        <div class="sheet short" role="dialog" aria-modal="true" aria-label="How to play">
+            <div class="sheet-head"><span>How to play</span><button class="icon-btn" onclick="closeSheet('rulesSheet')" aria-label="Close">&times;</button></div>
+            <div class="sheet-body rules">
+                <ol>
+                    <li>Each turn, one player is the <b>Hinter</b>. Only they see where the target is on the dial.</li>
+                    <li>They give a clue that sits that far between the two words on the card.</li>
+                    <li>Their team turns the dial to where they think the target is.</li>
+                    <li>The other team calls whether the target is further <b>left</b> or <b>right</b>.</li>
+                    <li>Reveal: centre band <b class="r4">4</b>, next bands <b class="r3">3</b> and <b class="r2">2</b>. A right left/right call gives the other team <b>1</b> (not when the guess scores 4).</li>
+                    <li>First team to the target score wins. The team that goes second starts with 1 point.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+<script src="js/fx.js?v=3"></script>
+<script src="js/cards.js?v=3"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>

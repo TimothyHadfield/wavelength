@@ -1,0 +1,8 @@
+# shared byte-for-byte copies of the kits (_fx, _table, _profile, _pwa, _online): never convert line endings
+js/fx.js -text
+css/table.css -text
+js/profile.js -text
+css/profile.css -text
+js/pwa.js -text
+sw.js -text
+js/online.js -text

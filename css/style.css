@@ -575,6 +575,38 @@ body {
 .icon-btn:hover { background: rgba(255, 255, 255, 0.16); }
 .icon-btn svg { width: 18px; height: 18px; }
 
+/* ============ KIT COLOURS (fx.js settings rows read these) ============ */
+:root {
+    --text: #ffffff; --muted: rgba(255, 255, 255, 0.55); --line: rgba(255, 255, 255, 0.12);
+    --accent: #00d9ff; --good: #4ade80; --bad: #ff6b6b;
+    --bg-soft: rgba(255, 255, 255, 0.06); --card: #1c2340; --card-hover: rgba(255, 255, 255, 0.14);
+}
+/* The game is played on a table: the kit's surface (texture, overhead light, vignette) in this site's navy */
+#gameScreen.tbl-surface { --tbl-base: #19203d; --tbl-light: rgba(170, 200, 255, 0.10); }
+
+.corner-btns { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
+.corner-btns .icon-btn { font-size: 1.05rem; font-weight: 700; }
+.game-menu-btn { position: absolute; top: 8px; right: 8px; z-index: 6; }
+
+.phase-panel.waiting { visibility: hidden; }
+.guess-row { display: flex; align-items: center; gap: 12px; }
+.nudge-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 1.7rem; line-height: 1;
+    cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; justify-content: center;
+    touch-action: none; -webkit-touch-callout: none; padding-bottom: 3px;
+}
+.nudge-btn:active { background: rgba(0, 217, 255, 0.25); border-color: #00d9ff; }
+
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.set-row .lab { font-weight: 600; color: rgba(255, 255, 255, 0.8); }
+.set-h { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 14px 0 2px; }
+.set-foot { font-size: 0.8rem; color: var(--muted); margin-top: 14px; }
+.btn-small { padding: 7px 16px; font-size: 0.9rem; }
+.rules ol { padding-left: 22px; display: flex; flex-direction: column; gap: 10px; color: rgba(255, 255, 255, 0.8); line-height: 1.45; }
+.rules b { color: #fff; }
+.rules .r4 { color: #5b9bff; } .rules .r3 { color: #ff6b6b; } .rules .r2 { color: #ffc800; }
+
 /* ============ SHORT SCREENS (phone on its side, small phones) ============ */
 @media (max-height: 620px) {
     .menu-inner { gap: 12px; }

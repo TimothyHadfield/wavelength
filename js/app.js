@@ -287,7 +287,28 @@ function getAngleFromMouse(mx, my) {
 }
 
 function drawDialBackground(ctx, cx, cy, r) {
-    ctx.fillStyle = '#f0f0f0';
+    // The device: a dark plastic rim around a cream face, lit from above
+    const rim = Math.max(6, r * 0.045);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
+    const body = ctx.createLinearGradient(0, cy - r - rim, 0, cy + rim);
+    body.addColorStop(0, '#3a4266');
+    body.addColorStop(1, '#141830');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + rim, Math.PI, 0, false);
+    ctx.lineTo(cx + r + rim, cy + rim * 0.6);
+    ctx.lineTo(cx - r - rim, cy + rim * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    const face = ctx.createRadialGradient(cx, cy - r * 0.55, r * 0.1, cx, cy, r * 1.05);
+    face.addColorStop(0, '#fbf8f0');
+    face.addColorStop(1, '#e6dfcd');
+    ctx.fillStyle = face;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, r, gameAngleToCanvas(0), gameAngleToCanvas(180), false);
@@ -306,14 +327,6 @@ function drawDialBackground(ctx, cx, cy, r) {
         ctx.lineTo(cx + Math.cos(rad) * r, cy + Math.sin(rad) * r);
         ctx.stroke();
     }
-
-    ctx.fillStyle = '#1a1a2e';
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.07, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
 
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.lineWidth = 2.5;
@@ -396,28 +409,57 @@ function drawTargetZone(ctx, cx, cy, r, targetAngle, alpha) {
     }
 }
 
-function drawPointer(ctx, cx, cy, r, angle) {
-    const rad = gameAngleToCanvas(angle);
-    const tipX = cx + Math.cos(rad) * r;
-    const tipY = cy + Math.sin(rad) * r;
-
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 3;
+// The centre knob: drawn last so the needle and the shutter both pivot under it
+function drawKnob(ctx, cx, cy, r) {
+    const k = Math.max(12, r * 0.08);
+    const g = ctx.createRadialGradient(cx - k * 0.35, cy - k * 0.4, k * 0.1, cx, cy, k);
+    g.addColorStop(0, '#5a6496');
+    g.addColorStop(1, '#141830');
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(tipX, tipY);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.arc(tipX, tipY, 10, 0, Math.PI * 2);
+    ctx.arc(cx, cy, k, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fff';
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(tipX, tipY, 5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, k - 1, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function drawPointer(ctx, cx, cy, r, angle) {
+    // A tapered red needle with a round grip at the tip
+    const rad = gameAngleToCanvas(angle);
+    const ux = Math.cos(rad), uy = Math.sin(rad);
+    const px = -uy, py = ux;
+    const base = Math.max(4, r * 0.022);
+    const tipX = cx + ux * r * 0.97, tipY = cy + uy * r * 0.97;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 3;
+    ctx.fillStyle = '#d93a32';
+    ctx.beginPath();
+    ctx.moveTo(cx + px * base, cy + py * base);
+    ctx.lineTo(tipX + px * 1.2, tipY + py * 1.2);
+    ctx.lineTo(tipX - px * 1.2, tipY - py * 1.2);
+    ctx.lineTo(cx - px * base, cy - py * base);
+    ctx.closePath();
+    ctx.fill();
+    const grip = Math.max(8, r * 0.045);
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, grip, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, grip * 0.42, 0, Math.PI * 2);
     ctx.fill();
 }
 
@@ -493,29 +535,32 @@ function drawCounterLabels(ctx, cx, cy, r, guessAngle, selectedSide, hoverSide) 
     });
 }
 
+// The shutter: a dark half-disc over the face that swings open clockwise (left end first) on reveal.
+// progress 0 = closed, 1 = fully open. It pauses a moment just before it starts, for suspense.
 function drawRevealCover(ctx, cx, cy, r, progress) {
     if (progress >= 1) return;
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const revealStart = gameState.round.targetAngle - eased * 180;
-    const revealEnd = gameState.round.targetAngle + eased * 180;
-    const clampedStart = Math.max(0, revealStart);
-    const clampedEnd = Math.min(180, revealEnd);
-
+    const p = Math.max(0, (progress - 0.12) / 0.88);
+    const eased = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    const openTo = eased * 180; // degrees uncovered from the left end
+    if (openTo >= 180) return;
     ctx.save();
+    const g = ctx.createLinearGradient(0, cy - r, 0, cy);
+    g.addColorStop(0, '#2b3358');
+    g.addColorStop(1, '#151a33');
+    ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r + 5, gameAngleToCanvas(0), gameAngleToCanvas(180), false);
+    ctx.arc(cx, cy, r + 1, gameAngleToCanvas(openTo), gameAngleToCanvas(180), false);
     ctx.closePath();
-    ctx.fillStyle = `rgba(26, 26, 46, ${0.95 * (1 - eased * 0.3)})`;
     ctx.fill();
-
-    ctx.globalCompositeOperation = 'destination-out';
+    // leading edge of the shutter
+    const e = gameAngleToCanvas(openTo);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r + 10, gameAngleToCanvas(clampedStart), gameAngleToCanvas(clampedEnd), false);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(0,0,0,1)';
-    ctx.fill();
+    ctx.lineTo(cx + Math.cos(e) * (r + 1), cy + Math.sin(e) * (r + 1));
+    ctx.stroke();
     ctx.restore();
 }
 
@@ -550,21 +595,14 @@ function renderDial() {
 
     drawDialBackground(ctx, cx, cy, radius);
 
-    // Target zone: visible during PEEK, CLUE_ENTRY, and REVEAL
-    const showTarget = [GamePhase.CLUE_ENTRY, GamePhase.REVEAL].includes(gameState.phase);
-    if (showTarget) {
-        let alpha = 1;
-        if (revealAnim.active) {
-            const elapsed = performance.now() - revealAnim.startTime;
-            alpha = Math.min(1, elapsed / revealAnim.duration);
-            if (alpha >= 1) revealAnim.active = false;
-        }
-        drawTargetZone(ctx, cx, cy, radius, gameState.round.targetAngle, alpha);
-    }
+    // Target zone: visible to the hinter during CLUE_ENTRY, and to everyone at REVEAL (under the shutter)
+    const showTarget = [GamePhase.CLUE_ENTRY, GamePhase.REVEAL].includes(gameState.phase) && gameState.round.revealed !== false;
+    if (showTarget) drawTargetZone(ctx, cx, cy, radius, gameState.round.targetAngle, 1);
 
     if (revealAnim.active && gameState.phase === GamePhase.REVEAL) {
         const progress = Math.min(1, (performance.now() - revealAnim.startTime) / revealAnim.duration);
         drawRevealCover(ctx, cx, cy, radius, progress);
+        if (progress >= 1) revealAnim.active = false;
     }
 
     // Counter guess highlights (before pointer so pointer draws on top)
@@ -585,6 +623,7 @@ function renderDial() {
     if (showPointer) {
         drawPointer(ctx, cx, cy, radius, gameState.round.guessAngle);
     }
+    drawKnob(ctx, cx, cy, radius);
 
     drawScorePopups(ctx);
 
@@ -660,10 +699,9 @@ function handlePointerDown(e) {
 
     if (gameState.phase === GamePhase.GUESS_PHASE) {
         e.preventDefault();
-        if (isInDial(pos.x, pos.y)) {
+        if (isInDial(pos.x, pos.y) && canMoveDial()) {
             isDragging = true;
-            gameState.round.guessAngle = getAngleFromMouse(pos.x, pos.y);
-            renderDial();
+            setGuess(getAngleFromMouse(pos.x, pos.y));
         }
     } else if (gameState.phase === GamePhase.COUNTER_GUESS) {
         e.preventDefault();
@@ -683,8 +721,7 @@ function handlePointerMove(e) {
     if (gameState.phase === GamePhase.GUESS_PHASE) {
         if (isDragging) {
             e.preventDefault();
-            gameState.round.guessAngle = getAngleFromMouse(pos.x, pos.y);
-            renderDial();
+            setGuess(getAngleFromMouse(pos.x, pos.y));
         }
         canvas.style.cursor = isInDial(pos.x, pos.y) ? 'grab' : 'default';
     } else if (gameState.phase === GamePhase.COUNTER_GUESS) {
@@ -708,8 +745,36 @@ function handlePointerMove(e) {
 }
 
 function handlePointerUp() {
+    const was = isDragging;
     isDragging = false;
+    if (was && typeof onGuessMoved === 'function') onGuessMoved(gameState.round.guessAngle, true);
 }
+
+// Every pointer move goes through here: clamps, ticks once per dial section crossed, redraws.
+function setGuess(angle) {
+    const a = Math.max(0, Math.min(180, angle));
+    const before = Math.floor(gameState.round.guessAngle / SECTION_DEG);
+    gameState.round.guessAngle = a;
+    if (Math.floor(a / SECTION_DEG) !== before && window.FX) FX.play('dialTick');
+    renderDial();
+    if (typeof onGuessMoved === 'function') onGuessMoved(a);
+}
+
+// Fine adjust: the arrow buttons move the pointer 1 degree per tap, and keep going while held.
+let nudgeTimer = null;
+function startNudge(dir) {
+    if (gameState.phase !== GamePhase.GUESS_PHASE || !canMoveDial()) return;
+    stopNudge();
+    setGuess(gameState.round.guessAngle + dir);
+    let delay = 380;
+    const step = () => { setGuess(gameState.round.guessAngle + dir); delay = Math.max(40, delay * 0.8); nudgeTimer = setTimeout(step, delay); };
+    nudgeTimer = setTimeout(step, delay);
+}
+function stopNudge() {
+    if (nudgeTimer) { clearTimeout(nudgeTimer); nudgeTimer = null; if (typeof onGuessMoved === 'function') onGuessMoved(gameState.round.guessAngle, true); }
+}
+// Overridden by online play (only the guessing team may move the dial there)
+function canMoveDial() { return true; }
 
 function setupEventListeners() {
     const canvas = document.getElementById('dialCanvas');
@@ -721,8 +786,7 @@ function setupEventListeners() {
         if (isDragging && gameState.phase === GamePhase.GUESS_PHASE) {
             e.preventDefault();
             const pos = getCanvasPos(e);
-            gameState.round.guessAngle = getAngleFromMouse(pos.x, pos.y);
-            renderDial();
+            setGuess(getAngleFromMouse(pos.x, pos.y));
         }
     }, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
@@ -740,6 +804,22 @@ function setupEventListeners() {
         }
     });
     document.getElementById('nextRoundBtn').addEventListener('click', nextRound);
+    [['nudgeLeft', -1], ['nudgeRight', 1]].forEach(([id, dir]) => {
+        const b = document.getElementById(id);
+        b.addEventListener('pointerdown', (e) => { e.preventDefault(); startNudge(dir); });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => b.addEventListener(t, stopNudge));
+        b.addEventListener('contextmenu', (e) => e.preventDefault());
+        // keyboard / switch access: Enter or Space on the button
+        b.addEventListener('click', (e) => { if (e.detail === 0 && canMoveDial()) setGuess(gameState.round.guessAngle + dir); });
+    });
+    document.addEventListener('keydown', (e) => {
+        if (gameState.phase !== GamePhase.GUESS_PHASE || !canMoveDial()) return;
+        if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            setGuess(gameState.round.guessAngle + (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 5 : 1));
+        }
+    });
     document.getElementById('clueInput').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') submitClue();
     });
@@ -869,7 +949,34 @@ function updateCardsButton() {
     document.getElementById('cardsBtnCount').textContent = lists === 1 ? `${n}` : `${lists} lists · ${n}`;
 }
 
+// Reveal: the shutter swings open (with a whoosh), then the score sounds and a "+N" floats up.
+// With Animations off the shutter is already open and only the sounds play.
+function playReveal(points) {
+    gameState.round.revealed = true;
+    const anim = !window.FX || FX.settings.animations;
+    const fast = window.FX && FX.settings.animSpeed === 'fast';
+    revealAnim.duration = anim ? (fast ? 700 : 1300) : 0;
+    revealAnim.active = anim;
+    revealAnim.startTime = performance.now();
+    requestAnimationFrame(renderDial);
+    if (window.FX) FX.play('shutter');
+    const pts = points.activeTeam;
+    setTimeout(() => {
+        if (gameState.phase !== GamePhase.REVEAL) return;
+        if (window.FX) {
+            if (pts === 4) FX.celebrate({ kind: 'big', at: document.getElementById('dialCanvas'), colors: ['#5b9bff', '#ffd700', '#ffffff'] });
+            else FX.play(pts === 3 ? 'ding' : pts === 2 ? 'pop' : 'miss');
+            if (points.opposingTeam) setTimeout(() => FX.play('chip'), 260);
+        }
+        if (pts > 0) scorePopups.push({ text: `+${pts}`, angle: gameAngleToCanvas(gameState.round.targetAngle), color: '#ffd700', startTime: performance.now(), duration: 1500 });
+        requestAnimationFrame(renderDial);
+    }, revealAnim.duration);
+}
+
+const PHASE_SOUND = { PSYCHIC_PREP: 'turn', GUESS_PHASE: 'cardFlip', COUNTER_GUESS: 'place' };
+
 function setPhase(newPhase) {
+    if (window.FX && PHASE_SOUND[newPhase] && gameState.phase !== newPhase) FX.play(PHASE_SOUND[newPhase]);
     gameState.phase = newPhase;
 
     switch (newPhase) {
@@ -940,10 +1047,7 @@ function setPhase(newPhase) {
 
         case GamePhase.REVEAL: {
             const points = resolveRound();
-            gameState.round.revealed = true;
-            revealAnim.active = true;
-            revealAnim.startTime = performance.now();
-            requestAnimationFrame(renderDial);
+            playReveal(points);
 
             const activeTeam = gameState.teams[gameState.activeTeamIndex];
             const opposingTeam = gameState.teams[1 - gameState.activeTeamIndex];
@@ -954,17 +1058,19 @@ function setPhase(newPhase) {
             html += `<div class="score-row"><span style="color:${activeTeam.color}">${escapeHtml(activeTeam.name)}</span><span class="points ${points.activeTeam > 0 ? 'gold' : 'red'}">+${points.activeTeam}</span></div>`;
             html += `<div class="score-row"><span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span><span class="points ${points.opposingTeam > 0 ? 'green' : 'red'}">+${points.opposingTeam}</span></div>`;
             document.getElementById('revealScoreCard').innerHTML = html;
-            updateScoreboard();
-
-            const targetRad = gameAngleToCanvas(gameState.round.targetAngle);
-            if (points.activeTeam > 0) {
-                scorePopups.push({ text: `+${points.activeTeam}`, angle: targetRad, color: '#ffd700', startTime: performance.now() + 800, duration: 1500 });
-            }
 
             showClueBar(true);
-            // Small delay so reveal animation plays before showing score
-            showPanel(null);
-            setTimeout(() => showPanel('revealPanel'), 900);
+            // The score card's space is kept from the start (so the dial doesn't jump), but the card and the
+            // new scores only show once the shutter is open.
+            showPanel('revealPanel');
+            const panel = document.getElementById('revealPanel');
+            panel.classList.toggle('waiting', revealAnim.duration > 0);
+            const myRound = gameState.roundNumber;
+            setTimeout(() => {
+                if (gameState.phase !== GamePhase.REVEAL || gameState.roundNumber !== myRound) return;
+                panel.classList.remove('waiting');
+                updateScoreboard();
+            }, revealAnim.duration);
             break;
         }
 
@@ -981,6 +1087,8 @@ function setPhase(newPhase) {
                 html += `<div class="final-score-card ${isWinner ? 'winner' : ''}"><div class="team-name" style="color:${team.color}">${escapeHtml(team.name)}</div><div class="score-value" style="color:${team.color}">${team.score}</div></div>`;
             });
             document.getElementById('finalScores').innerHTML = html;
+            if (window.FX) FX.celebrate({ kind: 'win', colors: [winner.color, '#ffd700', '#ffffff'] });
+            if (typeof onGameOver === 'function') onGameOver(winner);
             break;
         }
     }
@@ -1047,7 +1155,41 @@ function goToMenu() {
 // ================================================================
 // INITIALIZATION
 // ================================================================
+const BUILD = 3;
+
+function setupFx() {
+    if (!window.FX) return;
+    FX.init({ game: 'wavelength', accent: '#00d9ff' });
+    // a soft detent click as the needle passes each of the 20 sections
+    FX.define('dialTick', k => { k.tone({ f: 2400, f2: 1800, dur: 0.018, vol: 0.12, type: 'triangle' }); k.noise({ f: 5000, filter: 'highpass', dur: 0.012, vol: 0.08 }); }, 'moves');
+    // the shutter sliding open
+    FX.define('shutter', k => { k.noise({ f: 500, f2: 2200, filter: 'bandpass', q: 1.2, dur: 0.9, a: 0.25, vol: 0.35 }); k.tone({ f: 140, f2: 90, dur: 0.25, at: 0.85, vol: 0.4 }); }, 'moves');
+}
+
+function renderSettingsSheet() {
+    const inGame = gameState.phase !== GamePhase.MENU && gameState.phase !== GamePhase.GAME_OVER;
+    const body = document.getElementById('settingsBody');
+    body.innerHTML = (inGame ? '<div class="set-row"><span class="lab">This game</span><button class="btn btn-small btn-dialog-cancel" id="endGameBtn">End game</button></div>' : '') +
+        '<h4 class="set-h">Sound &amp; effects</h4><div id="fxSet"></div>' +
+        `<p class="set-foot">Build ${BUILD}</p>`;
+    if (window.FX) FX.renderSettings(document.getElementById('fxSet'));
+    const end = document.getElementById('endGameBtn');
+    if (end) end.addEventListener('click', () => {
+        // two taps, so a stray tap can't end the game
+        if (end.dataset.armed) { closeSheet('settingsSheet'); endGameToMenu(); return; }
+        end.dataset.armed = '1';
+        end.textContent = 'Tap again to end';
+    });
+}
+function openSettings() { renderSettingsSheet(); openSheet('settingsSheet'); }
+function endGameToMenu() {
+    if (typeof onEndGame === 'function' && onEndGame() === false) return;
+    gameState.phase = GamePhase.MENU;
+    showScreen('menuScreen');
+}
+
 function init() {
+    setupFx();
     setupEventListeners();
     resizeCanvas();
     renderCardManager();

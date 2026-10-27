@@ -85,15 +85,40 @@ try {
   await tapAt(30);
   const g = await page.evaluate(() => gameState.round.guessAngle);
   check(Math.abs(g - 30) < 2, 'tap on the dial moves the pointer there', `${g.toFixed(1)}°`);
+  for (let i = 0; i < 3; i++) await page.tap('#nudgeRight');
+  const g2 = await page.evaluate(() => gameState.round.guessAngle);
+  check(Math.abs(g2 - g - 3) < 0.01, 'fine-adjust button moves the pointer 1° per tap', `${g.toFixed(1)}° -> ${g2.toFixed(1)}°`);
+  await page.keyboard.press('ArrowLeft');
+  const g3 = await page.evaluate(() => gameState.round.guessAngle);
+  check(Math.abs(g2 - 1 - g3) < 0.01, 'arrow key moves the pointer 1°');
   await shot(page, 'guess');
+  // settings sheet mid-game: sound rows + End game
+  await page.tap('.game-menu-btn');
+  await page.waitForSelector('#settingsSheet.open');
+  const rows = await page.$$eval('#settingsBody .set-row', r => r.length);
+  check(rows >= 6, 'settings sheet shows sound & effects rows and End game', `${rows} rows`);
+  await shot(page, 'settings');
+  await page.tap('#settingsSheet .sheet-head .icon-btn');
   await page.tap('#lockGuessBtn');
   await page.waitForSelector('#counterPanel', { state: 'visible' });
   await tapAt(120);
   await page.waitForSelector('#counterSubmitBtn', { state: 'visible' });
+  const pre = await page.evaluate(() => document.getElementById('team1ScoreDisplay').textContent + ' / ' + document.getElementById('team2ScoreDisplay').textContent);
   await page.tap('#counterSubmitBtn');
+  await page.waitForTimeout(650);
+  const mid = await page.evaluate(() => ({ anim: revealAnim.active, vis: getComputedStyle(document.getElementById('revealPanel')).visibility,
+    board: document.getElementById('team1ScoreDisplay').textContent + ' / ' + document.getElementById('team2ScoreDisplay').textContent,
+    real: gameState.teams.map(t => t.name + ': ' + t.score).join(' / '), cy: dialGeo.cy }));
+  check(mid.anim && mid.vis === 'hidden', 'shutter is mid-swing and the score card waits for it', JSON.stringify(mid));
+  check(mid.board === pre, 'scoreboard does not give the result away before the shutter opens', `${pre} -> ${mid.board} (real ${mid.real})`);
+  await shot(page, 'reveal-mid');
   await page.waitForSelector('#revealPanel', { state: 'visible', timeout: 5000 });
   await page.waitForTimeout(1400);
   await shot(page, 'reveal');
+  const cyAfter = await page.evaluate(() => dialGeo.cy);
+  check(Math.abs(cyAfter - mid.cy) < 1, 'dial does not move when the score card appears', `${mid.cy} -> ${cyAfter}`);
+  const board2 = await page.evaluate(() => [document.getElementById('team1ScoreDisplay').textContent, document.getElementById('team2ScoreDisplay').textContent, gameState.teams.map(t => t.score)]);
+  check(board2[0].endsWith(': ' + board2[2][0]) && board2[1].endsWith(': ' + board2[2][1]), 'scoreboard shows the new scores after the reveal', JSON.stringify(board2));
   const sc = await page.evaluate(() => ({ s: gameState.teams.map(t => t.score), p: gameState.round.pointsAwarded, ph: gameState.phase }));
   check(sc.ph === 'REVEAL' && sc.p && typeof sc.p.activeTeam === 'number', 'round reaches the reveal with points', JSON.stringify(sc));
   await page.tap('#nextRoundBtn');
