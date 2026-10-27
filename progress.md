@@ -33,6 +33,7 @@ GloVe 300d (free, 400k words) "semantic axis" guesser on 74 hand-placed clues (e
 - Global rules in `~/.claude/CLAUDE.md` apply.
 
 ## Traps
+- **online.js cache stamp (2026-10-27):** every import of `js/online.js` uses `?v=a3d0418b`, the `_online` content stamp. After a re-copy: put the new stamp from `node ../_online/tools/stamp.mjs` there, bump the importing file's `?v=` (and pwa.js `data-version`), then `node ../_online/tools/stamp.mjs --check .` must say OK.
 - See `CLAUDE.md` Traps (escapeHtml, hinterIndex, 100dvh, dial jumps, ResizeObserver timing, kit copies byte-for-byte).
 
 ## Decisions

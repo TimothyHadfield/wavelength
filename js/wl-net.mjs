@@ -13,7 +13,7 @@ let room = null, loading = null, snap = null, busy = false, msg = '', shownKey =
 
 function load() {
   if (room) return Promise.resolve(room);
-  if (!loading) loading = import('./online.js?v=7').then((m) => {
+  if (!loading) loading = import('./online.js?v=a3d0418b').then((m) => {
     room = m.createOnline({ game, gameId: 'wavelength', botDelayMs: 900 });
     room.on('change', onSnap);
     room.on('error', (m2) => toast(typeof m2 === 'string' ? m2 : (m2 && m2.message) || 'Online error'));
