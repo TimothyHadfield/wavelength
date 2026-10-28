@@ -615,6 +615,30 @@ body {
 .rules ol { padding-left: 22px; display: flex; flex-direction: column; gap: 10px; color: rgba(255, 255, 255, 0.8); line-height: 1.45; }
 .rules b { color: #fff; }
 .rules .r4 { color: #5b9bff; } .rules .r3 { color: #ff6b6b; } .rules .r2 { color: #ffc800; }
+.rules-note { margin-top: 12px; color: rgba(255, 255, 255, 0.7); line-height: 1.45; font-size: 0.92rem; }
+.vid-list { list-style: none; padding: 0; margin: 4px 0 0; }
+.vid-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.vid-list a { color: #00d9ff; font-weight: 600; text-decoration: none; }
+.vid-list a::after { content: " \2197"; font-size: 0.85em; }
+.vid-list span { color: var(--muted); font-size: 0.85rem; text-align: right; }
+
+/* Co-op (Settings): one team on the menu, "Co-op · 7 cards" in place of "Play to" */
+.coop-tag { display: none; }
+#menuScreen.coop .coop-tag { display: inline-flex; }
+#menuScreen.coop .score-setting, #menuScreen.coop .team-setup-col.team2 { display: none; }
+#gameSet .fx-lab > span { white-space: nowrap; }
+#gameSet .seg button { padding: 6px 9px; }
+.coop-note { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+
+/* Guess timer: floats over the dial's top-left corner so nothing moves when it shows */
+.guess-timer {
+    position: absolute; top: 10px; left: 10px; z-index: 6; display: none;
+    min-width: 54px; padding: 5px 10px; border-radius: 16px; text-align: center;
+    background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff; font-weight: 800; font-variant-numeric: tabular-nums; font-size: 1rem;
+}
+.guess-timer.on { display: block; }
+.guess-timer.low { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.6); }
 
 /* ============ SHORT SCREENS (phone on its side, small phones) ============ */
 @media (max-height: 620px) {

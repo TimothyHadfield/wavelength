@@ -24,8 +24,10 @@ function gameExtra(rounds, finalScores, winnerTeam) {
 }
 
 // mode: 'friends' (one phone, no "me"), 'online' or 'computer' (myTeam known)
-function resultFromGame({ mode, rounds, finalScores, winnerTeam, myTeam }) {
+// coop: one team, no winner or loser score (so Clean sweep and Marathon never count it)
+function resultFromGame({ mode, rounds, finalScores, winnerTeam, myTeam, coop }) {
     const extra = gameExtra(rounds, finalScores, winnerTeam);
+    if (coop) { extra.coop = true; extra.coopScore = finalScores[0]; delete extra.winnerScore; delete extra.loserScore; }
     const mine = myTeam === 0 || myTeam === 1;
     return {
         mode,

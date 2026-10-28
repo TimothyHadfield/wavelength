@@ -16,7 +16,8 @@ A browser version of the party game Wavelength for two teams sharing one screen 
   - `setupProfile()` / `onGameOver()` (records once per game), `setupFx()`, `renderSettingsSheet()`, `PWA.safeToReload` (only MENU/GAME_OVER, no sheet open, no input focused).
 - Online: `js/wave-online.mjs` (ES module: the game for the kit — teams by join order, phases clue→guess→counter→reveal→over, target only in the Hinter's private doc until the reveal; `score()` matches app.js), `js/wl-net.mjs` (module loaded last: room sheet `#onlineSheet`, lobby, maps each room snapshot onto app.js screens via `setPhase`, `NET_WAIT` panel for "someone else's move"; `window.WLNet` is what app.js calls when `gameState.mode === 'online'`). It reads app.js's top-level `let/const` (`gameState`, `GamePhase`, `SPECTRUM_CARDS`, `CARD_LISTS`, `selectedListIndices`) by bare name: they are global bindings, **not** `window.` properties. `js/online.js` = kit copy (`-text`), loaded only when a room is opened or resumed.
 - `js/cards.js`: `WL_LISTS`, 11 built-in lists, 471 original cards (Basic 71 + 10 themed × 40).
-- `js/profile-wl.js`: `WL_PROFILE` = Wavelength's 8 achievements + `resultFromGame()` (pure, node-tested).
+- `js/profile-wl.js`: `WL_PROFILE` = Wavelength's 8 achievements + `resultFromGame()` (pure, node-tested; `coop: true` drops winner/loser scores).
+- `js/coop-wl.js`: `WL_COOP` = co-op rules (7 cards, bullseye = 3 pts + 1 card, rating bands 0-3 … 25+, 16+ = won). Pure, node-tested. app.js: `opts` (`wavelength:opts` = `{coop, timer}`, Settings → Game), `isCoop()` (never online), `gameState.coop` / `gameState.cardsLeft`, `lockGuess()`, guess timer (`startGuessTimer`, badge `#guessTimer` floats over the dial). Remembered menu setup: `wavelength:setup` (saved on Start Game, restored in `init()`).
 - Kit copies, **byte-for-byte, never edit here** (`.gitattributes` `-text`): `js/online.js` (_online v2), `js/fx.js` (_fx), `css/table.css` (_table 1.0.2), `js/profile.js` + `css/profile.css` (_profile), `sw.js` + `js/pwa.js` + `tools/make-icons.mjs` + `tools/pwa-check.mjs` (_pwa). Update by re-copying from `Board and Card Games/_<kit>/`.
 - `manifest.webmanifest`, `icons/`, `icon.svg`, `apple-touch-icon.png`: home-screen install.
 - `README.md`: GitHub showcase page (screenshots in `docs/screenshots/`).
@@ -29,13 +30,15 @@ A browser version of the party game Wavelength for two teams sharing one screen 
 - Hinter rotates within each team; the first hinter and first team are random.
 - Game over is checked when "Next Turn" is pressed. If both teams pass the target in the same round, the higher score wins (exact tie: Team 1 is shown as winner; Tim's call, see progress.md).
 - No catch-up rule (official: a trailing team that scores 4 goes again). Not added: Tim's call.
+- Co-op (Settings, off by default, one phone only): rulebook's cooperative variant. One team (Team 1 column), 7 cards, no left/right call, bullseye = 3 pts + 1 extra card, game over when the deck runs out, total read off the rating table (bands from the rulebook, our own wording).
+- Guess timer (Settings, off by default, one phone only): 30/60/90 s for the guessing team; at 0 the guess locks where it is.
 
 ## Run locally
 `python -m http.server 8110` in this folder (background), then open http://localhost:8110/.
 
 ## Test (all headless; Playwright from `~/.claude/tools/node_modules`)
-- `npm test` = `node --test "test/*.test.mjs"` (cards: 400+, no duplicates, shapes; achievements). Node 24 needs the quoted glob, not `test/`.
-- `npm run e2e` (`node tools/e2e.mjs [webkit|chrome] [--shots DIR]`): 22 checks at 393×659 touch: cards sheet, saved lists, tap/nudge/arrow on the dial, resume after reload, settings, shutter, no spoiler, no dial jumps, result reason, fresh cards, no double score after reload, My stats.
+- `npm test` = `node --test "test/*.test.mjs"` (19: cards 400+, no duplicates, shapes; achievements; co-op rules; online). Node 24 needs the quoted glob, not `test/`.
+- `npm run e2e` (`node tools/e2e.mjs [webkit|chrome] [--shots DIR]`): 32 checks (10 added 10-28: videos, remembered setup, co-op, guess timer) at 393×659 touch: cards sheet, saved lists, tap/nudge/arrow on the dial, resume after reload, settings, shutter, no spoiler, no dial jumps, result reason, fresh cards, no double score after reload, My stats.
 - `npm run layout` (`node tools/layout-check.mjs [webkit|chrome] [--shots DIR]`): 5 sizes (393, 320, 659×393, 1280, 1440) × 6 phases: no overflow, no scroll, button on screen, dial size, rim not cut off.
 - `npm run pwa` (`node tools/pwa-check.mjs`, config `tests/pwa-check.json`): 18 checks (offline, never an old build, safe reload).
 - `node test/ui.online.mjs <baseUrl> [outDir]`: 4 headless phones (one browser) make/join a room and tap through a game to 8 on real Firestore (~1 min). Not in `npm test` (needs internet; uses free quota).

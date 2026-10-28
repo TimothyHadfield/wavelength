@@ -38,6 +38,21 @@ function saveLists() {
 // Active card pool — built from selected lists at game start
 let SPECTRUM_CARDS = [];
 
+// Game options from Settings, saved on the device: co-op mode and the guess timer (seconds, 0 = off)
+const OPTS_KEY = 'wavelength:opts';
+const TIMER_CHOICES = [0, 30, 60, 90];
+const opts = { coop: false, timer: 0 };
+try {
+    const o = JSON.parse(localStorage.getItem(OPTS_KEY) || 'null');
+    if (o && typeof o === 'object') {
+        opts.coop = o.coop === true;
+        opts.timer = TIMER_CHOICES.includes(o.timer) ? o.timer : 0;
+    }
+} catch (e) { /* storage blocked: defaults */ }
+function saveOpts() { try { localStorage.setItem(OPTS_KEY, JSON.stringify(opts)); } catch (e) { /* not saved */ } }
+// Co-op is one phone only: an online room always plays the normal two-team game
+function isCoop() { return !!gameState.coop && gameState.mode !== 'online'; }
+
 // ================================================================
 // GAME STATE
 // ================================================================
@@ -116,6 +131,39 @@ function removePlayer(btn) {
 // Names, list names and card text are typed by players; escape them before putting them in innerHTML
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// The last game's team names, players and "Play to" come back next time (saved when a game starts)
+const SETUP_KEY = 'wavelength:setup';
+function saveSetup() {
+    const team = (n) => ({
+        name: document.getElementById(`team${n}NameInput`).value.trim(),
+        players: [...document.querySelectorAll(`#team${n}Players .player-row input`)].map(i => i.value.trim()),
+    });
+    try { localStorage.setItem(SETUP_KEY, JSON.stringify({ teams: [team(1), team(2)], to: document.getElementById('targetScoreSelect').value })); } catch (e) { /* not saved */ }
+}
+function restoreSetup() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(SETUP_KEY) || 'null'); } catch (e) { s = null; }
+    if (!s || !Array.isArray(s.teams)) return;
+    s.teams.slice(0, 2).forEach((t, i) => {
+        if (!t || typeof t !== 'object') return;
+        const n = i + 1;
+        if (typeof t.name === 'string' && t.name) document.getElementById(`team${n}NameInput`).value = t.name.slice(0, 20);
+        const names = (Array.isArray(t.players) ? t.players : []).slice(0, 12).map(p => String(p == null ? '' : p).slice(0, 20));
+        while (names.length < 2) names.push('');
+        const list = document.getElementById(`team${n}Players`);
+        list.querySelectorAll('.player-row').forEach(r => r.remove());
+        names.forEach(name => {
+            const row = document.createElement('div');
+            row.className = 'player-row';
+            row.innerHTML = '<input type="text" placeholder="Player name" maxlength="20" /><button class="btn-remove-player" aria-label="Remove player" onclick="removePlayer(this)">&times;</button>';
+            row.querySelector('input').value = name; // value, never innerHTML: names are typed by players
+            list.appendChild(row);
+        });
+    });
+    const sel = document.getElementById('targetScoreSelect');
+    if ([...sel.options].some(o => o.value === String(s.to))) sel.value = String(s.to);
 }
 
 function getPlayersFromList(listId) {
@@ -781,6 +829,45 @@ function startNudge(dir) {
 function stopNudge() {
     if (nudgeTimer) { clearTimeout(nudgeTimer); nudgeTimer = null; if (typeof onGuessMoved === 'function') onGuessMoved(gameState.round.guessAngle, true); }
 }
+// Lock In Guess (or the guess timer running out). Co-op has no left/right call: straight to the reveal.
+function lockGuess() {
+    if (gameState.phase !== GamePhase.GUESS_PHASE) return;
+    if (gameState.mode === 'online' && window.WLNet) { WLNet.guess(gameState.round.guessAngle); return; }
+    setPhase(isCoop() ? GamePhase.REVEAL : GamePhase.COUNTER_GUESS);
+}
+
+// Guess timer (Settings, off by default, one phone only): counts down in the corner of the dial and
+// locks the guess where it is at 0. The badge floats over the dial, so nothing moves when it shows.
+let guessTimer = null;
+function stopGuessTimer() {
+    if (guessTimer) { clearInterval(guessTimer); guessTimer = null; }
+    const b = document.getElementById('guessTimer');
+    if (b) b.classList.remove('on', 'low');
+}
+function startGuessTimer() {
+    stopGuessTimer();
+    if (!opts.timer || gameState.mode === 'online') return;
+    const b = document.getElementById('guessTimer');
+    const end = Date.now() + opts.timer * 1000;
+    const myRound = gameState.roundNumber;
+    const tick = () => {
+        if (gameState.phase !== GamePhase.GUESS_PHASE || gameState.roundNumber !== myRound) { stopGuessTimer(); return; }
+        const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+        b.textContent = left >= 60 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : `0:${String(left).padStart(2, '0')}`;
+        b.classList.toggle('low', left <= 10);
+        if (left === 0) {
+            stopGuessTimer();
+            stopNudge();
+            isDragging = false;
+            if (window.FX) FX.play('miss');
+            lockGuess();
+        }
+    };
+    b.classList.add('on');
+    tick();
+    guessTimer = setInterval(tick, 250);
+}
+
 // Overridden by online play (only the guessing team may move the dial there)
 function canMoveDial() { return gameState.mode !== 'online' || !!(window.WLNet && WLNet.canMove()); }
 
@@ -806,7 +893,7 @@ function setupEventListeners() {
     document.getElementById('submitClueBtn').addEventListener('click', submitClue);
     // online play (js/wl-net.mjs): each decision goes to the room instead of moving the game on here
     const net = () => gameState.mode === 'online' && window.WLNet;
-    document.getElementById('lockGuessBtn').addEventListener('click', () => net() ? WLNet.guess(gameState.round.guessAngle) : setPhase(GamePhase.COUNTER_GUESS));
+    document.getElementById('lockGuessBtn').addEventListener('click', lockGuess);
     document.getElementById('counterSubmitBtn').addEventListener('click', () => {
         if (counterSelectedSide) {
             if (net()) { WLNet.counter(counterSelectedSide); return; }
@@ -887,6 +974,14 @@ function getScoreLabel(points) {
 function resolveRound() {
     const { targetAngle, guessAngle, counterGuess } = gameState.round;
     const activeTeamPoints = calculateScore(targetAngle, guessAngle);
+    if (isCoop()) {
+        const c = WL_COOP.points(activeTeamPoints);
+        gameState.round.pointsAwarded = { activeTeam: c.points, opposingTeam: 0, bull: c.extraCard };
+        if (c.extraCard) gameState.cardsLeft++;
+        gameState.teams[0].score += c.points;
+        gameState.roundHistory.push({ ...gameState.round, team: 0 });
+        return gameState.round.pointsAwarded;
+    }
     const opposingTeamIndex = 1 - gameState.activeTeamIndex;
     let counterCorrect = false;
     if (counterGuess && activeTeamPoints < 4) {
@@ -934,12 +1029,14 @@ function hidePrepOverlay() {
 function updateScoreboard() {
     const t1 = gameState.teams[0];
     const t2 = gameState.teams[1];
+    const coop = isCoop();
     document.getElementById('team1ScoreDisplay').textContent = `${t1.name}: ${t1.score}`;
-    document.getElementById('team2ScoreDisplay').textContent = `${t2.name}: ${t2.score}`;
+    // co-op: the right-hand pill counts the cards still in the deck (after this one)
+    document.getElementById('team2ScoreDisplay').textContent = coop ? `Cards left: ${gameState.cardsLeft}` : `${t2.name}: ${t2.score}`;
     const hinter = getCurrentHinter();
     const team = gameState.teams[gameState.activeTeamIndex];
     document.getElementById('roundInfo').innerHTML =
-        `<div>Round ${gameState.roundNumber} · to ${gameState.targetScore}</div><div class="hinter-info" style="color:${team.color}">${escapeHtml(hinter)} is hinting</div>`;
+        `<div>${coop ? `Card ${gameState.roundNumber} · co-op` : `Round ${gameState.roundNumber} · to ${gameState.targetScore}`}</div><div class="hinter-info" style="color:${team.color}">${escapeHtml(hinter)} is hinting</div>`;
 }
 
 function updateSpectrumLabels() {
@@ -987,7 +1084,7 @@ function playReveal(points) {
     setTimeout(() => {
         if (gameState.phase !== GamePhase.REVEAL) return;
         if (window.FX) {
-            if (pts === 4) FX.celebrate({ kind: 'big', at: document.getElementById('dialCanvas'), colors: ['#5b9bff', '#ffd700', '#ffffff'] });
+            if (pts === 4 || points.bull) FX.celebrate({ kind: 'big', at: document.getElementById('dialCanvas'), colors: ['#5b9bff', '#ffd700', '#ffffff'] });
             else FX.play(pts === 3 ? 'ding' : pts === 2 ? 'pop' : 'miss');
             if (points.opposingTeam) setTimeout(() => FX.play('chip'), 260);
         }
@@ -1002,6 +1099,7 @@ function setPhase(newPhase) {
     if (window.FX && PHASE_SOUND[newPhase] && gameState.phase !== newPhase) FX.play(PHASE_SOUND[newPhase]);
     gameState.phase = newPhase;
     saveGame();
+    stopGuessTimer();
 
     switch (newPhase) {
         case GamePhase.MENU:
@@ -1053,6 +1151,7 @@ function setPhase(newPhase) {
             showClueBar(true);
             showPanel('guessPanel');
             renderDial();
+            startGuessTimer();
             break;
         }
 
@@ -1075,14 +1174,16 @@ function setPhase(newPhase) {
 
             const activeTeam = gameState.teams[gameState.activeTeamIndex];
             const opposingTeam = gameState.teams[1 - gameState.activeTeamIndex];
-            const label = getScoreLabel(points.activeTeam);
+            const coop = isCoop();
+            const label = coop && points.bull ? { text: 'Bullseye! (3 pts + 1 card)', cls: 'bullseye' } : getScoreLabel(points.activeTeam);
 
             let html = `<div class="score-label ${label.cls}">${label.text}</div>`;
             html += `<div class="score-divider"></div>`;
             html += `<div class="score-row"><span style="color:${activeTeam.color}">${escapeHtml(activeTeam.name)}</span><span class="points ${points.activeTeam > 0 ? 'gold' : 'red'}">+${points.activeTeam}</span></div>`;
-            html += `<div class="score-row"><span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span><span class="points ${points.opposingTeam > 0 ? 'green' : 'red'}">+${points.opposingTeam}</span></div>`;
+            if (coop) html += `<div class="score-row"><span>Cards left</span><span class="points">${gameState.cardsLeft}</span></div>`;
+            else html += `<div class="score-row"><span style="color:${opposingTeam.color}">${escapeHtml(opposingTeam.name)}</span><span class="points ${points.opposingTeam > 0 ? 'green' : 'red'}">+${points.opposingTeam}</span></div>`;
             const call = gameState.round.counterGuess;
-            if (call) {
+            if (call && !coop) {
                 const side = call === 'LEFT' ? 'left' : 'right';
                 const why = points.activeTeam === 4 ? `called ${side} (no point on a bullseye)` : `called ${side}: ${points.opposingTeam ? 'correct' : 'wrong'}`;
                 html += `<div class="score-why">${escapeHtml(opposingTeam.name)} ${why}</div>`;
@@ -1106,6 +1207,17 @@ function setPhase(newPhase) {
 
         case GamePhase.GAME_OVER: {
             showScreen('gameOverScreen');
+            if (isCoop()) {
+                // co-op: the total is read off the rating table
+                const team = gameState.teams[0];
+                const r = WL_COOP.rating(team.score);
+                document.getElementById('winnerTitle').textContent = r.text;
+                document.getElementById('winnerTitle').style.color = team.color;
+                document.getElementById('finalScores').innerHTML = `<div class="final-score-card${r.won ? ' winner' : ''}"><div class="team-name" style="color:${team.color}">${escapeHtml(team.name)}</div><div class="score-value" style="color:${team.color}">${team.score}</div><div class="coop-note">${gameState.roundNumber} cards · 16+ wins</div></div>`;
+                if (window.FX) { if (r.won) FX.celebrate({ kind: 'win', colors: [team.color, '#ffd700', '#ffffff'] }); else FX.play('miss'); }
+                if (typeof onGameOver === 'function') onGameOver(team);
+                break;
+            }
             // Both teams can pass the target in one round (guess points + counter point): the higher score wins
             const [t1, t2] = gameState.teams;
             const winner = t2.score > t1.score ? t2 : t1;
@@ -1132,8 +1244,9 @@ function startGame() {
     const name2 = document.getElementById('team2NameInput').value.trim() || 'Team 2';
     const players1 = getPlayersFromList('team1Players');
     const players2 = getPlayersFromList('team2Players');
+    const coop = opts.coop;
     if (players1.length < 2) { document.getElementById('menuError').textContent = `${name1} needs at least 2 players`; return; }
-    if (players2.length < 2) { document.getElementById('menuError').textContent = `${name2} needs at least 2 players`; return; }
+    if (!coop && players2.length < 2) { document.getElementById('menuError').textContent = `${name2} needs at least 2 players`; return; }
 
     // Build card pool from selected lists
     SPECTRUM_CARDS = [];
@@ -1146,13 +1259,22 @@ function startGame() {
 
     gameState.teams[0] = { name: name1, score: 0, color: '#00d9ff', players: players1, hinterIndex: Math.floor(Math.random() * players1.length) };
     gameState.teams[1] = { name: name2, score: 0, color: '#ff6b6b', players: players2, hinterIndex: Math.floor(Math.random() * players2.length) };
-    gameState.activeTeamIndex = Math.random() < 0.5 ? 0 : 1;
-    // Second team gets 1 bonus point for going second
-    gameState.teams[1 - gameState.activeTeamIndex].score = 1;
+    gameState.mode = 'friends';
+    gameState.coop = coop;
+    if (coop) {
+        // co-op: one team plays the whole deck (7 cards; this first one is dealt now)
+        gameState.activeTeamIndex = 0;
+        gameState.cardsLeft = WL_COOP.CARDS - 1;
+    } else {
+        gameState.activeTeamIndex = Math.random() < 0.5 ? 0 : 1;
+        // Second team gets 1 bonus point for going second
+        gameState.teams[1 - gameState.activeTeamIndex].score = 1;
+        gameState.cardsLeft = 0;
+    }
     gameState.roundNumber = 1;
     gameState.usedCardIndices = [];
     gameState.roundHistory = [];
-    gameState.mode = 'friends';
+    saveSetup();
     gameState.recorded = false;
     gameState.myTeam = -1; // one phone: nobody's team is "mine"
     gameState.targetScore = parseInt(document.getElementById('targetScoreSelect').value);
@@ -1171,9 +1293,15 @@ function submitClue() {
 }
 
 function nextRound() {
-    if (gameState.teams.find(t => t.score >= gameState.targetScore)) { setPhase(GamePhase.GAME_OVER); return; }
-    advanceHinter(gameState.activeTeamIndex);
-    gameState.activeTeamIndex = 1 - gameState.activeTeamIndex;
+    if (isCoop()) {
+        if (gameState.cardsLeft <= 0) { setPhase(GamePhase.GAME_OVER); return; }
+        gameState.cardsLeft--;
+        advanceHinter(0);
+    } else {
+        if (gameState.teams.find(t => t.score >= gameState.targetScore)) { setPhase(GamePhase.GAME_OVER); return; }
+        advanceHinter(gameState.activeTeamIndex);
+        gameState.activeTeamIndex = 1 - gameState.activeTeamIndex;
+    }
     gameState.roundNumber++;
     gameState.round = { spectrumCard: drawCard(), targetAngle: generateTargetAngle(), hinterName: getCurrentHinter(), clue: '', guessAngle: 90, counterGuess: null, pointsAwarded: null, revealed: false };
     revealAnim.active = false;
@@ -1222,7 +1350,7 @@ function resumeGame() {
 // ================================================================
 // INITIALIZATION
 // ================================================================
-const BUILD = 7;
+const BUILD = 8;
 
 // ================================================================
 // MY STATS (game-profile kit; Wavelength's achievements are in js/profile-wl.js)
@@ -1248,10 +1376,12 @@ function onGameOver(winner) {
     const winnerTeam = gameState.teams.indexOf(winner);
     Profile.recordResult(WL_PROFILE.resultFromGame({
         mode: gameState.mode || 'friends',
-        rounds: gameState.roundHistory.map(r => ({ team: r.team, points: r.pointsAwarded })),
+        // a co-op bullseye scores 3 but is still a bullseye for the achievements
+        rounds: gameState.roundHistory.map(r => ({ team: r.team, points: r.pointsAwarded && r.pointsAwarded.bull ? { ...r.pointsAwarded, activeTeam: 4 } : r.pointsAwarded })),
         finalScores: gameState.teams.map(t => t.score),
         winnerTeam,
         myTeam: gameState.myTeam,
+        coop: isCoop(),
     }));
 }
 
@@ -1269,9 +1399,30 @@ function renderSettingsSheet() {
     const body = document.getElementById('settingsBody');
     body.innerHTML = (inGame ? '<div class="set-row"><span class="lab">This game</span><button class="btn btn-small btn-dialog-cancel" id="endGameBtn">End game</button></div>' : '') +
         '<div class="set-row"><span class="lab">Rules</span><button class="btn btn-small btn-dialog-cancel" onclick="closeSheet(\'settingsSheet\');openSheet(\'rulesSheet\')">How to play</button></div>' +
+        '<h4 class="set-h">Game</h4><div class="fx-set" id="gameSet">' +
+        `<div class="set-row fx-row${inGame ? ' dim' : ''}"><span class="fx-lab"><label for="optCoop">Co-op</label><button type="button" class="q" aria-label="What is co-op?" aria-expanded="false" data-why="whyCoop">?</button></span><label class="switch"><input type="checkbox" id="optCoop"${opts.coop ? ' checked' : ''}${inGame ? ' disabled' : ''}><span></span></label></div>` +
+        '<div class="fx-why" id="whyCoop" hidden>Everyone plays as one team through 7 cards, with no left/right call. A bullseye scores 3 and adds a card. 16+ wins. One phone only; set it before a game.</div>' +
+        '<div class="set-row fx-row"><span class="fx-lab"><span>Guess timer</span><button type="button" class="q" aria-label="What does the timer do?" aria-expanded="false" data-why="whyTimer">?</button></span><div class="seg" role="group" aria-label="Guess timer">' +
+        TIMER_CHOICES.map(s => `<button type="button" data-timer="${s}" aria-pressed="${opts.timer === s}">${s ? s + 's' : 'Off'}</button>`).join('') + '</div></div>' +
+        '<div class="fx-why" id="whyTimer" hidden>The guessing team gets this long to turn the dial; at 0 the guess locks where it is. One phone only.</div>' +
+        '</div>' +
         '<h4 class="set-h">Sound &amp; effects</h4><div id="fxSet"></div>' +
         `<p class="set-foot">Build ${BUILD}</p>`;
     if (window.FX) FX.renderSettings(document.getElementById('fxSet'));
+    const gs = document.getElementById('gameSet');
+    gs.addEventListener('change', (e) => {
+        if (e.target.id === 'optCoop') { opts.coop = e.target.checked; saveOpts(); applyCoopMenu(); }
+    });
+    gs.addEventListener('click', (e) => {
+        const t = e.target;
+        if (t.dataset && t.dataset.timer != null) {
+            opts.timer = +t.dataset.timer; saveOpts();
+            gs.querySelectorAll('[data-timer]').forEach(b => b.setAttribute('aria-pressed', String(b === t)));
+        } else if (t.dataset && t.dataset.why) {
+            const w = document.getElementById(t.dataset.why);
+            w.hidden = !w.hidden; t.setAttribute('aria-expanded', String(!w.hidden));
+        }
+    });
     const end = document.getElementById('endGameBtn');
     if (end) end.addEventListener('click', () => {
         // two taps, so a stray tap can't end the game
@@ -1281,6 +1432,10 @@ function renderSettingsSheet() {
     });
 }
 function openSettings() { renderSettingsSheet(); openSheet('settingsSheet'); }
+// Co-op on: the menu shows one team and "Co-op · 7 cards" in place of "Play to"
+function applyCoopMenu() {
+    document.getElementById('menuScreen').classList.toggle('coop', opts.coop);
+}
 function endGameToMenu() {
     if (typeof onEndGame === 'function' && onEndGame() === false) return;
     goToMenu();
@@ -1292,6 +1447,8 @@ function init() {
     setupEventListeners();
     resizeCanvas();
     renderCardManager();
+    restoreSetup();
+    applyCoopMenu();
     if (!resumeGame()) showScreen('menuScreen');
     if (window.PWA) PWA.safeToReload = () =>
         (gameState.phase === GamePhase.MENU || gameState.phase === GamePhase.GAME_OVER) && gameState.mode !== 'online' &&

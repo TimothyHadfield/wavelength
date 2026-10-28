@@ -15,7 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="Wavelength">
     <link rel="stylesheet" href="css/table.css?v=5">
     <link rel="stylesheet" href="css/profile.css?v=6">
-    <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 
@@ -59,6 +59,7 @@
                     <option value="20">20 points</option>
                 </select>
             </div>
+            <button class="btn-cards coop-tag" id="coopTag" onclick="openSettings()" aria-label="Co-op is on: open Settings">Co-op <b>7 cards</b></button>
             <button class="btn-cards" id="cardsBtn" onclick="openSheet('cardsSheet')" aria-label="Spectrum card lists">
                 <span>Cards</span> <b id="cardsBtnCount"></b>
             </button>
@@ -126,6 +127,7 @@
             <!-- Dial area -->
             <div id="dialContainer">
                 <canvas id="dialCanvas" aria-label="Dial"></canvas>
+                <div class="guess-timer" id="guessTimer" aria-live="off"></div>
                 <button class="icon-btn game-menu-btn" onclick="openSettings()" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
                 <div class="spec-card" id="specCard">
                     <div class="spec-half left"><span class="spec-arrow">&larr;</span><span id="spectrumLeft"></span></div>
@@ -192,16 +194,25 @@
                     <li>Reveal: centre band <b class="r4">4</b>, next bands <b class="r3">3</b> and <b class="r2">2</b>. A right left/right call gives the other team <b>1</b> (not when the guess scores 4).</li>
                     <li>First team to the target score wins. The team that goes second starts with 1 point.</li>
                 </ol>
+                <p class="rules-note"><b>Co-op</b> (Settings): everyone is one team for 7 cards, no left/right call; a bullseye scores 3 and adds a card. 16+ wins.</p>
+                <h4 class="set-h">Videos</h4>
+                <ul class="vid-list">
+                    <li><a href="https://www.youtube.com/watch?v=MR_ughqNorg" target="_blank" rel="noopener">How to play</a><span>Meeple University</span></li>
+                    <li><a href="https://www.youtube.com/watch?v=cBoQO1wqErA" target="_blank" rel="noopener">Learn to play</a><span>Barnes &amp; Noble</span></li>
+                    <li><a href="https://www.youtube.com/watch?v=KuL_R60_320" target="_blank" rel="noopener">Review: why it's great</a><span>Shut Up &amp; Sit Down</span></li>
+                    <li><a href="https://www.youtube.com/watch?v=sk1BowhRwj0" target="_blank" rel="noopener">Watch a game</a><span>Good Mythical MORE</span></li>
+                </ul>
             </div>
         </div>
     </div>
 
 <script src="js/fx.js?v=5"></script>
 <script src="js/profile.js?v=6"></script>
-<script src="js/profile-wl.js?v=5"></script>
+<script src="js/profile-wl.js?v=6"></script>
+<script src="js/coop-wl.js?v=1"></script>
 <script src="js/cards.js?v=5"></script>
-<script src="js/pwa.js?v=7" data-version="9"></script>
-<script src="js/app.js?v=7"></script>
+<script src="js/pwa.js?v=7" data-version="10"></script>
+<script src="js/app.js?v=8"></script>
 <script type="module" src="js/wl-net.mjs?v=8"></script>
 </body>
 </html>

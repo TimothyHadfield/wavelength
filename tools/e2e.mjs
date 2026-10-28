@@ -160,6 +160,88 @@ try {
   await shot(page, 'my-stats');
   check(errs.length === 0, 'no page errors', errs.join(' | '));
   await ctx.close();
+
+  // ---- wave 3: videos, remembered setup, co-op mode, guess timer (fresh device)
+  const ctx2 = await browser.newContext({ viewport: { width: 393, height: 659 }, hasTouch: true, deviceScaleFactor: 2 });
+  const p2 = await ctx2.newPage();
+  const errs2 = [];
+  p2.on('pageerror', e => errs2.push(e.message));
+  await p2.goto(base, { waitUntil: 'load' });
+  const vids = await p2.$$eval('#rulesSheet a[href*="youtube.com/watch"]', as => as.map(a => a.target === '_blank' && /noopener/.test(a.rel)));
+  check(vids.length >= 2 && vids.every(Boolean), 'How to play lists YouTube videos that open in a new tab', `${vids.length}`);
+  // names typed for a game come back on the next visit
+  await p2.fill('#team1NameInput', 'Owls');
+  const ins = await p2.$$('.player-list input');
+  for (let i = 0; i < ins.length; i++) await ins[i].fill('Pl<' + i + '>');
+  await p2.click('#team1Players ~ .btn-add-player');
+  await p2.fill('#team1Players .player-row:last-child input', 'Extra');
+  await p2.selectOption('#targetScoreSelect', '15');
+  await p2.tap('#startGameBtn');
+  await p2.waitForSelector('#psychicPrepOverlay.active');
+  await p2.evaluate(() => endGameToMenu());
+  await p2.reload({ waitUntil: 'load' });
+  const setup = await p2.evaluate(() => ({ t1: document.getElementById('team1NameInput').value, n1: [...document.querySelectorAll('#team1Players input')].map(i => i.value), n2: [...document.querySelectorAll('#team2Players input')].map(i => i.value), to: document.getElementById('targetScoreSelect').value }));
+  check(setup.t1 === 'Owls' && setup.n1.join() === 'Pl<0>,Pl<1>,Extra' && setup.n2.join() === 'Pl<2>,Pl<3>' && setup.to === '15', 'team names, players and Play to are remembered after a reload', JSON.stringify(setup));
+  // co-op: switch in Settings, menu shows one team, 7 cards, no left/right call, bullseye = 3 + 1 card
+  await p2.tap('#menuScreen .corner-btns:not(.left) .icon-btn:last-child');
+  await p2.waitForSelector('#settingsSheet.open');
+  const coopOff = await p2.evaluate(() => !document.getElementById('optCoop').checked);
+  check(coopOff, 'co-op is off by default');
+  await p2.click('#optCoop');
+  await p2.tap('#settingsSheet .sheet-head .icon-btn');
+  const menu = await p2.evaluate(() => ({ t2: getComputedStyle(document.querySelector('.team-setup-col.team2')).display, tag: getComputedStyle(document.getElementById('coopTag')).display, sw: document.documentElement.scrollWidth, sh: document.documentElement.scrollHeight }));
+  check(menu.t2 === 'none' && menu.tag !== 'none' && menu.sw <= 393 && menu.sh <= 659, 'co-op menu: one team, co-op tag, no scrolling', JSON.stringify(menu));
+  await shot(p2, 'coop-menu');
+  await p2.tap('#startGameBtn');
+  await p2.waitForSelector('#psychicPrepOverlay.active');
+  const c0 = await p2.evaluate(() => ({ s: gameState.teams[0].score, left: gameState.cardsLeft, pill: document.getElementById('team2ScoreDisplay').textContent }));
+  check(c0.s === 0 && c0.left === 6 && /Cards left: 6/.test(c0.pill), 'co-op starts on 0 with 6 cards left after the first', JSON.stringify(c0));
+  // play a bullseye: guess exactly on the target
+  await p2.tap('#psychicReadyBtn');
+  await p2.fill('#clueInput', 'Spot on');
+  await p2.tap('#submitClueBtn');
+  await p2.waitForSelector('#guessPanel', { state: 'visible' });
+  await p2.evaluate(() => setGuess(gameState.round.targetAngle));
+  await p2.tap('#lockGuessBtn');
+  await p2.waitForTimeout(300);
+  const c1 = await p2.evaluate(() => ({ ph: gameState.phase, s: gameState.teams[0].score, left: gameState.cardsLeft }));
+  check(c1.ph === 'REVEAL' && c1.s === 3 && c1.left === 7, 'co-op skips the left/right call; a bullseye scores 3 and adds a card', JSON.stringify(c1));
+  await p2.waitForTimeout(1800);
+  await shot(p2, 'coop-reveal');
+  // play out the deck by missing every card: game over after 8 cards (7 + the bonus)
+  let guard = 0;
+  while (guard++ < 20) {
+    const ph = await p2.evaluate(() => { nextRound(); return gameState.phase; });
+    if (ph === 'GAME_OVER') break;
+    await p2.evaluate(() => { setPhase('CLUE_ENTRY'); gameState.round.clue = 'x'; setPhase('GUESS_PHASE'); setGuess(gameState.round.targetAngle > 90 ? 0 : 180); lockGuess(); });
+  }
+  const over = await p2.evaluate(() => ({ cards: gameState.roundNumber, title: document.getElementById('winnerTitle').textContent, want: WL_COOP.rating(3).text, score: gameState.teams[0].score }));
+  check(over.cards === 8 && over.score === 3 && over.title === over.want, 'co-op ends after the deck runs out and shows the rating', JSON.stringify(over));
+  await p2.waitForTimeout(500);
+  await shot(p2, 'coop-over');
+  await p2.click('#gameOverScreen .btn-primary');
+  // guess timer: off by default; 30s locks the guess at 0 (clock sped up)
+  await p2.evaluate(() => { opts.coop = false; opts.timer = 0; saveOpts(); applyCoopMenu(); });
+  await p2.tap('#startGameBtn');
+  await p2.tap('#psychicReadyBtn');
+  await p2.fill('#clueInput', 'Tick');
+  await p2.tap('#submitClueBtn');
+  await p2.waitForSelector('#guessPanel', { state: 'visible' });
+  await p2.waitForTimeout(250);
+  const noTimer = await p2.evaluate(() => getComputedStyle(document.getElementById('guessTimer')).display);
+  const cyNo = await p2.evaluate(() => dialGeo.cy);
+  check(noTimer === 'none', 'guess timer is off by default', noTimer);
+  await p2.evaluate(() => { opts.timer = 30; setPhase('COUNTER_GUESS'); setPhase('GUESS_PHASE'); });
+  await p2.waitForTimeout(250);
+  const cyT0 = await p2.evaluate(() => dialGeo.cy);
+  const tShow = await p2.evaluate(() => ({ d: getComputedStyle(document.getElementById('guessTimer')).display, t: document.getElementById('guessTimer').textContent }));
+  await shot(p2, 'timer');
+  await p2.evaluate(() => { const real = Date.now; const t0 = real(); Date.now = () => t0 + 31000; });
+  await p2.waitForTimeout(600);
+  const tEnd = await p2.evaluate(() => ({ ph: gameState.phase, cy: dialGeo.cy, d: getComputedStyle(document.getElementById('guessTimer')).display }));
+  check(tShow.d !== 'none' && tShow.t === '0:30' && tEnd.ph === 'COUNTER_GUESS' && tEnd.d === 'none' && Math.abs(cyNo - cyT0) < 1, 'guess timer counts down over the dial (dial does not move) and locks the guess at 0', JSON.stringify({ tShow, tEnd, cyNo, cyT0 }));
+  check(errs2.length === 0, 'no page errors (wave 3 checks)', errs2.join(' | '));
+  await ctx2.close();
 } finally {
   await browser.close();
   server.close();
