@@ -12,3 +12,6 @@
 - **Built:** 4 verified YouTube videos in How to play; Co-op switch (Settings → Game; 7 cards, no left/right, bullseye 3 + 1 card, rating table); guess timer Off/30/60/90 s; menu remembers names/players/Play to. Skipped: new card lists (471 is plenty), nudge buttons + sound switch + list ticks (already built).
 - **Verified:** `npm test` 19/19 (co-op profile test failed first on the old profile-wl.js); e2e 32/32 WebKit + Chrome (old build crashes on the new checks); layout 30/30 WebKit + Chrome; pwa 18/18; sheets/menu screenshots at 393, 320, 659×393, 1440.
 - **Open:** Tim's calls in progress.md (wave 3 line).
+
+## 2026-10-28 — kit sweep (builder b4)
+- Built 725d337: game-pwa 1.4.0, data-version 11 (no coach in this game). Verified: npm test 19/19, pwa-check 18/18, Settings sheet at 320 px 316/316 (no sideways scroll), Play-to select already dark, live-check LIVE.
