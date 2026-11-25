@@ -44,6 +44,7 @@ GloVe 300d (free, 400k words) "semantic axis" guesser on 74 hand-placed clues (e
 - 10-27: all built-in lists ticked by default; custom lists now saved on the device.
 - 10-27: computer not built (measured not sensible). Online built 10-27 (Tim's go): needs 4+ people (2 per team), no computers online; second team starts on 1 like one phone; tie → Team 1 (same as one phone).
 - 10-27: reload during the clue step resumes at the look-away screen (the clue screen shows the target).
+- 2026-11-25 Catan-lessons audit, no code change: the last round's shutter reveal and score stay until "Next Turn" opens Game over (already a moment, not a cut); first team and hinter are random; no hidden info or computers; npm test 19/19, `npm run layout` 30/30 on a rerun (a first run under heavy CPU load failed 1280/1440 "clue: dial off screen", the known ResizeObserver timing flake; screenshots fine).
 
 ## Tim's calls (open, 10-27)
 - The 10 new list names and all card wording; achievement names; "My stats" top-left on the menu.
