@@ -112,13 +112,14 @@ body {
 .player-row input:focus { border-color: rgba(255, 255, 255, 0.35); }
 
 .btn-remove-player {
-    width: 28px; height: 28px; border: none; border-radius: 50%;
-    background: rgba(255, 80, 80, 0.25); color: #ff6b6b;
+    /* a 28px circle inside a 36px tap area */
+    width: 36px; height: 36px; padding: 4px; background-clip: content-box; border: none; border-radius: 50%;
+    background-color: rgba(255, 80, 80, 0.25); color: #ff6b6b;
     font-size: 1.1rem; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.2s; flex-shrink: 0;
 }
-.btn-remove-player:hover { background: rgba(255, 80, 80, 0.5); }
+.btn-remove-player:hover { background-color: rgba(255, 80, 80, 0.5); }
 
 .btn-add-player {
     width: 100%; padding: 7px;
@@ -149,6 +150,9 @@ body {
 .score-setting select option { background: #1a1a2e; color: #fff; }
 
 .menu-error { color: #ff6b6b; font-size: 0.9rem; min-height: 1.2em; }
+.menu-error:empty { display: none; }
+/* Narrow phones: the title starts under the corner buttons, not behind them */
+@media (max-width: 560px) { #menuScreen { padding-top: 52px; } }
 
 /* ============ BUTTONS ============ */
 .btn {
@@ -165,13 +169,20 @@ body {
 #gameScreen { flex-direction: column; position: relative; }
 
 #scoreboard {
-    display: flex; justify-content: space-between; align-items: center;
+    /* three columns: long team names wrap inside their own pill instead of squeezing the middle */
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); gap: 8px; align-items: center;
     padding: 8px 16px; background: rgba(0, 0, 0, 0.4);
     z-index: 10; flex-shrink: 0;
 }
 .team-score {
-    font-size: clamp(0.8rem, 2vw, 1.05rem); font-weight: 700;
-    padding: 5px 14px; border-radius: 20px;
+    font-size: clamp(0.8rem, 2vw, 1.05rem); font-weight: 700; line-height: 1.25;
+    padding: 5px 14px; border-radius: 20px; min-width: 0; max-width: 100%;
+}
+.team-score.team1 { justify-self: start; }
+.team-score.team2 { justify-self: end; text-align: right; }
+@media (max-width: 480px) {
+    #scoreboard { padding: 6px 10px; gap: 6px; }
+    .team-score { padding: 4px 10px; border-radius: 16px; }
 }
 .team-score.team1 { background: rgba(0, 217, 255, 0.2); color: #00d9ff; border: 1px solid rgba(0, 217, 255, 0.3); }
 .team-score.team2 { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); }
@@ -567,7 +578,7 @@ body {
     .sheet { border-radius: 16px; border-bottom: 2px solid rgba(0, 217, 255, 0.25); }
 }
 .icon-btn {
-    width: 34px; height: 34px; border: none; border-radius: 50%;
+    width: 36px; height: 36px; border: none; border-radius: 50%;
     background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.8);
     font-size: 1.3rem; line-height: 1; cursor: pointer; font-family: inherit;
     display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -590,7 +601,7 @@ body {
 .corner-btns .icon-btn { font-size: 1.05rem; font-weight: 700; }
 .corner-btns.left { right: auto; left: 10px; }
 .me-btn {
-    height: 34px; padding: 0 12px 0 4px; border: none; border-radius: 17px;
+    height: 36px; padding: 0 12px 0 4px; border: none; border-radius: 18px;
     background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.85);
     font-size: 0.9rem; font-weight: 600; font-family: inherit;
 }
@@ -644,10 +655,13 @@ body {
 @media (max-height: 620px) {
     .menu-inner { gap: 12px; }
     .team-setup-col { padding: 10px; }
-    .team-header-input { padding: 7px 10px; margin-bottom: 8px; font-size: 1rem; }
+    .team-header-input { padding: 8px 10px; margin-bottom: 8px; font-size: 1rem; }
     .player-list { gap: 6px; margin-bottom: 8px; }
-    .player-row input { padding: 6px 10px; }
-    .btn-add-player { padding: 5px; }
+    .player-row input { padding: 7px 10px; }
+    .btn-add-player { padding: 7px; }
+    /* reveal: a tighter score card keeps the dial big */
+    .reveal-score-card { padding: 8px 18px; }
+    .score-row { padding: 3px 0; }
 }
 @media (max-height: 480px) {
     #menuScreen { padding: 8px 16px; }
@@ -688,3 +702,12 @@ body {
 .net-you { color: var(--muted); font-size: 0.8rem; }
 .net-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 120; background: #1a1a2e; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 8px 14px; color: #fff; font-size: 0.9rem; max-width: calc(100% - 32px); }
 .net-toast[hidden] { display: none; }
+
+/* Small phones (fit pass 2026-11-27): more room for the player names, and Cards + Play online share one row */
+@media (max-width: 360px) {
+    .teams-setup { gap: 8px; }
+    .team-setup-col { padding: 8px; }
+    .player-row { gap: 2px; }
+    .menu-row { gap: 8px; }
+    .btn-cards { padding: 8px 10px; }
+}

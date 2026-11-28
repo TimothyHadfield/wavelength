@@ -705,21 +705,33 @@ function resizeCanvas() {
     // Flat edge of the half-circle sits at cy, the arc rises to cy - radius, and the spectrum card
     // sits just under the flat edge. The dial + card group is centred in the space left over.
     const padTop = 12, padBottom = 8;
-    const specH = h < 300 ? 40 : 52;
-    // gap = 12px + the knob's radius (r * 0.08), so the knob never touches the card;
-    // the rim (r * 0.045, at least 6px) sits above the face and must fit too
-    const maxRadiusByHeight = Math.min((h - padTop - padBottom - specH - 12) / 1.125, (h - padTop - padBottom - specH - 18) / 1.08);
-    const maxRadiusByWidth = (w - 20) / 2;
-    dialGeo.radius = Math.max(0, Math.min(maxRadiusByHeight, maxRadiusByWidth));
+    const spec = document.getElementById('specCard');
+    let specH = h < 300 ? 40 : 52;
+    let sw = 0;
+    // Two passes: long card wording (e.g. "Superpower Side Effect: Terrible") wraps to more lines on a
+    // narrow card, so the card grows to fit its words and the dial gives up that height.
+    for (let pass = 0; pass < 3; pass++) {
+        // gap = 12px + the knob's radius (r * 0.08), so the knob never touches the card;
+        // the rim (r * 0.045, at least 6px) sits above the face and must fit too
+        const maxRadiusByHeight = Math.min((h - padTop - padBottom - specH - 12) / 1.125, (h - padTop - padBottom - specH - 18) / 1.08);
+        const maxRadiusByWidth = (w - 20) / 2;
+        dialGeo.radius = Math.max(0, Math.min(maxRadiusByHeight, maxRadiusByWidth));
+        if (!spec) break;
+        sw = Math.min(w - 16, Math.max(2 * dialGeo.radius + 16, Math.min(320, w - 16)));
+        spec.style.width = sw + 'px';
+        let words = 0;
+        spec.querySelectorAll('.spec-half > span:not(.spec-arrow)').forEach(s => { words = Math.max(words, s.getBoundingClientRect().height); });
+        const need = Math.ceil(words) + 10;
+        if (need <= specH) break;
+        specH = need;
+    }
     const specGap = 12 + dialGeo.radius * 0.08;
     const rim = Math.max(6, dialGeo.radius * 0.045);
     const groupH = rim + dialGeo.radius + specGap + specH;
     const top = Math.max(padTop, (h - groupH) / 2);
     dialGeo.cy = top + rim + dialGeo.radius;
     dialGeo.cx = w / 2;
-    const spec = document.getElementById('specCard');
     if (spec) {
-        const sw = Math.min(w - 16, Math.max(2 * dialGeo.radius + 16, Math.min(320, w - 16)));
         spec.style.setProperty('--spec-h', specH + 'px');
         spec.style.width = sw + 'px';
         spec.style.left = ((w - sw) / 2) + 'px';
@@ -1042,9 +1054,11 @@ function updateScoreboard() {
 function updateSpectrumLabels() {
     const card = gameState.round.spectrumCard;
     if (!card) return;
+    const changed = document.getElementById('spectrumLeft').textContent !== card.left || document.getElementById('spectrumRight').textContent !== card.right;
     document.getElementById('spectrumLeft').textContent = card.left;
     document.getElementById('spectrumRight').textContent = card.right;
     document.getElementById('specCard').classList.add('on');
+    if (changed) resizeCanvas(); // the card's height follows its wording
 }
 
 // ================================================================
@@ -1350,7 +1364,7 @@ function resumeGame() {
 // ================================================================
 // INITIALIZATION
 // ================================================================
-const BUILD = 8;
+const BUILD = 12;
 
 // ================================================================
 // MY STATS (game-profile kit; Wavelength's achievements are in js/profile-wl.js)
