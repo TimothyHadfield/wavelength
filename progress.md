@@ -1,7 +1,7 @@
 # Wavelength progress
 
 ## START HERE
-Last updated 2026-10-28 (wave 3). Read `CLAUDE.md` (what it is, file map, rules as built, tests, traps), then this file, then the tail of `chat.md`.
+Last updated 2026-11-27 (fit pass). Read `CLAUDE.md` (what it is, file map, rules as built, tests, traps), then this file, then the tail of `chat.md`.
 
 ## Goal right now
 Board-games improvement wave (2026-10-27, Tim: "I want to make our boardgames the best in every single metric we can"). Wavelength's pass is done and live. **Online rooms built and on (10-27)**, Tim: "I think it'll be okay to enable it to all games for now and we can disable it later if it becomes too much". Open: Tim's calls below.
@@ -18,7 +18,8 @@ Board-games improvement wave (2026-10-27, Tim: "I want to make our boardgames th
 | Online rooms (10-27) | **On.** Menu "Play online" → sheet: name, Make a room / Join by 5-letter code; lobby shows two team columns (teams by join order, alternating); host taps Start once 4+ people are in (4–8). Each phone: Hinter alone sees the target and writes the clue; teammates see the dial and **one of them** locks it in (dial is not live-synced, they agree out loud/on a call); other team calls left/right; anyone taps Next Turn. Host's card lists + "Play to" are used (40 cards sent at room start). Files: `js/online.js` (kit v2 copy), `js/wave-online.mjs` (rules), `js/wl-net.mjs` (room + screens). No computers online, no My stats for online games |
 | Wave 3 (10-28) | **Videos** in How to play (4, oEmbed-checked 10-28: MR_ughqNorg "Wavelength Board Game - How to Play" Meeple University; cBoQO1wqErA "Learn how to play WAVELENGTH" Barnes & Noble; KuL_R60_320 "Wavelength Review - How Much Do You Love Your Mum?" Shut Up & Sit Down; sk1BowhRwj0 "Let's Play: Wavelength" Good Mythical MORE). **Co-op** switch in Settings → Game (rulebook variant; sources: gamerules.com/rules/wavelength = 7 cards, no left/right, rating bands; opinionatedgamers.com Dan Blum review = bullseye 3 pts + extra card). **Guess timer** Off/30/60/90 s (locks the guess at 0). **Menu remembers** team names, players, Play to. Card list ticks were already saved; nudge ‹ › and sound switches already existed |
 | Computer player | **Not built: not sensible** with free word vectors (measured, below) |
-| Tests | `npm test` 19 (7 online, 3 co-op), e2e 32, layout 30, pwa 18; `node test/ui.online.mjs <url> [dir]` = 4 headless phones on real Firestore play to 8 (10-27: passed, 1.1 min, no target leak, same final score on all 4) |
+| Fit pass 2026-11-27 | Crowded game (8 a team, 20-letter names, "Superpower Side Effect: Terrible", 40-letter clue) fits at 393, 320, 659×393, 1280, 1440: card wording never cut, scoreboard wraps long names, tap targets 36 px, title clear of corner buttons. `node tools/fit-check.mjs [--normal]` 35/35 (old build 140 failures) |
+| Tests | `npm test` 19 (7 online, 3 co-op), e2e 32, layout 30, pwa 18, fit 35; `node test/ui.online.mjs <url> [dir]` = 4 headless phones on real Firestore play to 8 (10-27: passed, 1.1 min, no target leak, same final score on all 4) |
 
 ## Online cost (10-27, measured with the kit cost harness `_online/test/cost.mjs`)
 Per game to 10: **4 people ≈ 66 writes / 190 reads**, **6 people ≈ 91 writes / 310 reads** (one write per decision, dial only on Lock). Harness think time is short; a real ~30-min game adds about 1 presence write per person per minute (≈ +120–180 writes). Free plan 20K writes / 50K reads a day.
@@ -44,6 +45,7 @@ GloVe 300d (free, 400k words) "semantic axis" guesser on 74 hand-placed clues (e
 - 10-27: all built-in lists ticked by default; custom lists now saved on the device.
 - 10-27: computer not built (measured not sensible). Online built 10-27 (Tim's go): needs 4+ people (2 per team), no computers online; second team starts on 1 like one phone; tie → Team 1 (same as one phone).
 - 10-27: reload during the clue step resumes at the look-away screen (the clue screen shows the target).
+- 2026-11-27 fit pass: `resizeCanvas()` measures the spectrum words and grows `--spec-h` to fit (dial shrinks to match); `updateSpectrumLabels()` calls it when the wording changes. Scoreboard is a 3-column grid (pills keep content width). Remove-player button = 28 px circle in a 36 px tap area (`background-clip: content-box`). Versions: style/app `?v=9`, pwa `data-version` 12, `BUILD` 12 (now in step).
 - 2026-11-25 Catan-lessons audit, no code change: the last round's shutter reveal and score stay until "Next Turn" opens Game over (already a moment, not a cut); first team and hinter are random; no hidden info or computers; npm test 19/19, `npm run layout` 30/30 on a rerun (a first run under heavy CPU load failed 1280/1440 "clue: dial off screen", the known ResizeObserver timing flake; screenshots fine).
 
 ## Tim's calls (open, 10-27)
@@ -59,6 +61,7 @@ GloVe 300d (free, 400k words) "semantic axis" guesser on 74 hand-placed clues (e
 ## NOT verified
 - A real iPhone: `100dvh`, home-screen app, offline after install, keyboard covering the dial while typing a clue (reasoned risk).
 - Android browsers.
+- Fit pass (11-27): checked in WebKit only (no Chrome run); 320 px menu player boxes still show only ~8 letters of a 20-letter name (the list scrolls inside itself).
 - Online on real phones (4 headless WebKit phones only); reload mid-game resume online not exercised in a browser.
 - Co-op bullseye rule (3 pts + 1 card) comes from a review, not the rulebook text itself (rulebook PDF not reached). Co-op/timer not run through `test/ui.online.mjs` (they are one-phone only and guarded by `gameState.mode`).
 

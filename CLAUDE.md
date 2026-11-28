@@ -40,6 +40,7 @@ A browser version of the party game Wavelength for two teams sharing one screen 
 - `npm test` = `node --test "test/*.test.mjs"` (19: cards 400+, no duplicates, shapes; achievements; co-op rules; online). Node 24 needs the quoted glob, not `test/`.
 - `npm run e2e` (`node tools/e2e.mjs [webkit|chrome] [--shots DIR]`): 32 checks (10 added 10-28: videos, remembered setup, co-op, guess timer) at 393×659 touch: cards sheet, saved lists, tap/nudge/arrow on the dial, resume after reload, settings, shutter, no spoiler, no dial jumps, result reason, fresh cards, no double score after reload, My stats.
 - `npm run layout` (`node tools/layout-check.mjs [webkit|chrome] [--shots DIR]`): 5 sizes (393, 320, 659×393, 1280, 1440) × 6 phases: no overflow, no scroll, button on screen, dial size, rim not cut off.
+- `node tools/fit-check.mjs [webkit|chrome] [--normal] [--shots DIR]`: crowded game (8 a team, long names, longest card, 40-letter clue) at the same 5 sizes × 7 screens: nothing cut or off screen, text ≥ 12 px, tap targets ≥ 36 px, card words fit, dial big enough to aim.
 - `npm run pwa` (`node tools/pwa-check.mjs`, config `tests/pwa-check.json`): 18 checks (offline, never an old build, safe reload).
 - `node test/ui.online.mjs <baseUrl> [outDir]`: 4 headless phones (one browser) make/join a room and tap through a game to 8 on real Firestore (~1 min). Not in `npm test` (needs internet; uses free quota).
 - `SITE_ROOT=<folder>` points e2e/layout at another build (fail-first checks against main).

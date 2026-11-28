@@ -15,3 +15,8 @@
 
 ## 2026-10-28 — kit sweep (builder b4)
 - Built 725d337: game-pwa 1.4.0, data-version 11 (no coach in this game). Verified: npm test 19/19, pwa-check 18/18, Settings sheet at 320 px 316/316 (no sideways scroll), Play-to select already dark, live-check LIVE.
+
+## 2026-11-27: fit pass (builder, Tim: "make sure the user can actually see the full screen and everything")
+- **Built 1cbb84b:** spectrum card grows to fit long wording (cut at 320 and 659×393 before); scoreboard 3 columns so long team names wrap in their pill (320: 97 → <80 px tall, reveal dial r 98 → 122); tap targets 36 px (icon buttons, My stats, remove-player hit area, short-screen inputs); menu title clear of the corner buttons on narrow phones; Cards + Play online one row at 320. No look/wording change.
+- **Verified:** new `tools/fit-check.mjs` (crowded: 8 players a team, 20-letter names, longest card, 40-letter clue; 5 sizes × 7 screens): old build 140 failures, new 35/35 crowded + 35/35 normal (WebKit); npm test 19/19, e2e 32/32, layout 30/30, pwa 18/18. Screenshots in the session scratchpad `wavelength-fit/before|after`.
+- **Open:** player-name inputs on the 320 px menu still show only ~8 letters of a 20-letter name (editable box, full name shows in game).
